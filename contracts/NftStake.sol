@@ -51,13 +51,13 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     bool public stakingLaunched;
     bool public depositPaused;
 
+    // Admin / owner / controller address 
     address public admin;
-    // uint256 public tokensPerBlock;
 
     uint256 [12] public god_reward = [115, 100, 100, 110, 125, 160, 170, 180, 175, 200, 250, 500];
     uint256 [5] public type_reward = [0, 200, 200, 200, 700];
     uint256 [3] public single_rewards = [25, 15, 100];
-    // (Zeus, Poseidon, Hades), Dyonysus, Olympus
+    // last 3: (Zeus, Poseidon, Hades), Dyonysus, Olympus
     uint256 [13] public coupling_rewards = [130, 130, 75, 75, 150, 175, 75, 130, 100, 150, 275, 50, 1000]; 
 
     uint256[2][13] public couplings = [
@@ -72,14 +72,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         [uint256(God.Aphrodite), uint256(God.Ares)],
         [uint256(God.Athena), uint256(God.Ares)]
     ];
-
-
-    struct Stake {
-        uint256 tokenId; // tokenId of the NFT
-        uint256 lastCheckpoint; // timestamp
-        uint256 currentYield; // current yield
-        address owner; // owner of the NFT
-    }
 
     struct Staker {
       uint256 currentYield; // how much is being generated per unit of time (day)
@@ -162,8 +154,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
           pieceInfo[tokenIds[i]] = tokenTraits[i];
       }
     }
-
-
 
     function stakeNFT(uint256[] calldata tokenIds, PieceInfo[] calldata tokenTraits) public nonReentrant {
       require(!depositPaused, "Deposit paused");
@@ -274,7 +264,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     //   emit Withdraw(_msgSender(), tokenIds.length);
     }
-
 
     /**
     * @dev External function to harvest the generated yield
@@ -457,7 +446,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     function pauseDeposit(bool _pause) public onlyAdmin {
       depositPaused = _pause;
     }
-
 
     //// =============== UTILITY FUNCTIONS =================
 
