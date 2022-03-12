@@ -96,41 +96,28 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     // TokenID => Stake
-    mapping(uint256 => Stake) public receipt;
+    mapping(address => Staker) private stakers;
     mapping(uint256 => PieceInfo) public pieceInfo;
-    mapping(address => Staker) private _stakers;
-
+    
 
     // Events
-    event NftStaked(address indexed staker, uint256 tokenId, uint256 blockNumber);
-    event NftUnStaked(address indexed staker, uint256 tokenId, uint256 blockNumber);
-    event StakePayout(address indexed staker, uint256 tokenId, uint256 stakeAmount, uint256 fromBlock, uint256 toBlock);
-    event StakeRewardUpdated(uint256 rewardPerBlock);
+    event NftStaked(address indexed staker, uint256[] tokenIds, uint256 blockNumber);
+    event NftUnStaked(address indexed staker, uint256[] tokenIds, uint256 blockNumber);
+    event StakePayout(address indexed staker, uint256[] tokenIds, uint256 stakeAmount, uint256 fromTime, uint256 toTime);
+    // event StakeRewardUpdated(uint256 rewardPerBlock);
 
-    modifier onlyStaker(uint256 tokenId) {
-        // require that this contract has the NFT
-        require(nftToken.ownerOf(tokenId) == address(this), "onlyStaker: Contract is not owner of this NFT");
 
-        // require that this token is staked
-        require(receipt[tokenId].lastCheckpoint != 0, "onlyStaker: Token is not staked");
-
-        // require that msg.sender is the owner of this nft
-        require(receipt[tokenId].owner == msg.sender, "onlyStaker: Caller is not NFT stake owner");
-
-        _;
-    }
-
-    modifier requireTimeElapsed(uint256 tokenId) {
+    modifier requireTimeElapsed(address staker) {
         // require that some time has elapsed (IE you can not Stake and unstake in the same block)
         require(
-            receipt[tokenId].lastCheckpoint < block.timestamp,
+            stakers[stakers].lastCheckpoint < block.timestamp,
             "requireTimeElapsed: Can not Stake/unStake/harvest in same block"
         );
         _;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "reclaimTokens: Caller is not the admin");
+        require(msg.sender == admin, "reclaimYieldTokens: Caller is not the admin");
         _;
     }
 
@@ -157,9 +144,12 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
 
+    /**
+    * @dev Updates the staker's current yield and the checkpoint time.
+    */
     function accumulate(address staker) internal {
-      _stakers[staker].accumulatedAmount += getCurrentReward(staker);
-      _stakers[staker].lastCheckpoint = block.timestamp;
+      stakers[staker].accumulatedAmount += getPendingRewardSinceCheckpoint(staker);
+      stakers[staker].lastCheckpoint = block.timestamp;
     }
 
     function _setTokensValues(
@@ -174,10 +164,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
 
-    /**
-    * @dev STAKE NFTs into the contract
-    */
-    function stakeNFT(uint256[] calldata tokenIds, PieceInfo[] memory tokenTraits) public nonReentrant {
+
+    function stakeNFT(uint256[] calldata tokenIds, PieceInfo[] calldata tokenTraits) public nonReentrant {
       require(!depositPaused, "Deposit paused");
       require(stakingLaunched, "Staking is not launched yet");
 
@@ -195,8 +183,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     address _msgSender = msg.sender;
 
-    Staker storage user = _stakers[_msgSender];
-    // uint256 newYield = user.currentYield;
+    Staker storage user = stakers[_msgSender];
 
     for (uint256 i; i < tokenIds.length; i++) {
         require(nftToken.ownerOf(tokenIds[i]) == _msgSender, "!Owner");
@@ -212,14 +199,17 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     //   emit Deposit(_msgSender(), tokenIds.length);    
     }
 
+    /**
+    * @dev Returns how much RELICS is left in the stake contract
+    */
     function getStakeContractBalance() public view returns (uint256) {
         return erc20Token.balanceOf(address(this));
     }
 
-    function getCurrentStakeEarned(uint256 tokenId) public view returns (uint256) {
-        return _getTimeStaked(tokenId).mul(receipt[tokenId].currentYield / SECONDS_IN_DAY);
-    }
 
+    /**
+    * @dev Moves around elements in a list so we can delete an element
+    */
     function _moveTokenInTheList(uint256[] memory list, uint256 tokenId) internal pure returns (uint256[] memory) {
       uint256 tokenIndex = 0;
       uint256 lastTokenIndex = list.length - 1;
@@ -244,18 +234,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
 
-    function elementInArray(uint256[] memory list, uint256 tokenId) internal pure returns (bool) {
-      uint256 length = list.length;
-
-      for(uint256 i = 0; i < length; i++) {
-        if (list[i] == tokenId) {
-          return true;
-        }
-      }
-
-      return false;
-    }
-
     /**
     * @dev UNSTAKE NFTs from the staking contract.
     */
@@ -263,11 +241,15 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
       address _msgSender = msg.sender;
 
-      Staker storage user = _stakers[_msgSender];
+      Staker storage user = stakers[_msgSender];
       uint256 newYield = user.currentYield;
 
+      accumulate(_msgSender);
+      _payoutStake(_msgSender);
+
+
       for (uint256 i; i < tokenIds.length; i++) {
-        require(elementInArray(_stakers[_msgSender].stakedNFTs, tokenIds[i]), "NFT not staked by the caller");
+        require(elementInArray(stakers[_msgSender].stakedNFTs, tokenIds[i]), "NFT not staked by the caller");
 
         require(nftToken.ownerOf(tokenIds[i]) == address(this), "Not in staking contract");
 
@@ -283,53 +265,38 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         nftToken.safeTransferFrom(address(this), _msgSender, tokenIds[i]);
       }
 
-      accumulate(_msgSender);
-      user.currentYield = newYield;
+      if (user.stakedNFTs.length == 0) {
+        delete stakers[_msgSender];
+      } else {
+        user.currentYield = newYield;
+      }
+    }
 
     //   emit Withdraw(_msgSender(), tokenIds.length);
     }
 
-    function _unStakeNFT(uint256 tokenId) internal onlyStaker(tokenId) requireTimeElapsed(tokenId) returns (bool) {
-        // payout Stake, this should be safe as the function is non-reentrant
-        _payoutStake(tokenId);
 
-        // delete Stake record, effectively unstaking it
-        delete receipt[tokenId];
-
-        // return token
-        nftToken.safeTransferFrom(address(this), msg.sender, tokenId);
-
-        emit NftUnStaked(msg.sender, tokenId, block.number);
-
-        return true;
-    }
-
-    function harvest(uint256 tokenId) public nonReentrant onlyStaker(tokenId) requireTimeElapsed(tokenId) {
+    /**
+    * @dev External function to harvest the generated yield
+    */
+    function harvest(address staker) public nonReentrant requireTimeElapsed(staker) {
         // This 'payout first' should be safe as the function is nonReentrant
-        _payoutStake(tokenId);
+        _payoutStake(staker);
 
         // update receipt with a new block number
-        receipt[tokenId].lastCheckpoint = block.timestamp;
+        stakers[staker].lastCheckpoint = block.timestamp;
     }
 
-    function reclaimTokens() external onlyAdmin {
+    /**
+    * @dev Withdraw leftover yield token in the contract to the admin's wallet
+    */
+    function reclaimYieldTokens() external onlyAdmin {
         erc20Token.transfer(admin, erc20Token.balanceOf(address(this)));
     }
 
-
-    function godsListMatches(uint256[] memory gods_list, 
-    uint256 [12] memory staked_gods) internal pure returns (bool) {
-        bool matched = true;
-
-        for (uint256 j; j < gods_list.length; j++) {
-            if (gods_list[j] != 255 && staked_gods[gods_list[j]] <= 0) {
-                matched = false;
-                break;
-                }
-            }
-        return matched;
-    }
-
+    /**
+    * @dev Main function to compute a given staker's yield 
+    */
     function computeYield(address _staker) public view returns (uint256) {
         // TODO - this is a placeholder for now
  
@@ -338,8 +305,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         uint256 yield = 0;
         
-        for (uint256 i; i < _stakers[_staker].stakedNFTs.length; i++) {
-            uint256 tokenId = _stakers[_staker].stakedNFTs[i];
+        for (uint256 i; i < stakers[_staker].stakedNFTs.length; i++) {
+            uint256 tokenId = stakers[_staker].stakedNFTs[i];
 
             staked_gods[pieceInfo[tokenId].God] += 1;
             if (pieceInfo[tokenId].Set != 255) {
@@ -373,7 +340,9 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         return yield;
     }
 
-    // Broken out to get around the complexity of the function
+    /**
+    * @dev Splintered from computeYield() to get around code complexity issues
+    */
     function computeCouplingsYield(uint256[12] memory staked_gods) public view returns (uint256) {
         uint256 yield = 0;
 
@@ -386,7 +355,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             yield += coupling_rewards[10];
         }
 
-         uint256 num_gods = 0;
+        // count the number of gods we have more than 0 of
+        uint256 num_gods = 0;
 
         for (uint256 i; i < staked_gods.length; i++) {
             if (staked_gods[i] > 0) {
@@ -394,12 +364,12 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             }
         }
 
-        // Dyonysus
+        // Dionysus & anyone else
         if (staked_gods[uint256(God.Dionysus)] > 0 && num_gods > 1){
             yield += coupling_rewards[11];
         }
 
-        // Olympus
+        // Olympus: full house
         if (num_gods == 12) {
             yield += coupling_rewards[12];
         }
@@ -410,73 +380,40 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     /**
     * @dev Returns the outstanding reward for a given staker since lastCheckpoint.
     */
-    function getCurrentReward(address staker) public view returns (uint256) {
-      Staker memory user = _stakers[staker];
+    function getPendingRewardSinceCheckpoint(address staker) public view returns (uint256) {
+      Staker memory user = stakers[staker];
       if (user.lastCheckpoint == 0) { return 0; }
 
       return (block.timestamp - user.lastCheckpoint) * user.currentYield / SECONDS_IN_DAY;
     }
 
-    function _stakeNFT(uint256 tokenId) internal returns (bool) {
-        // require this token is not already staked
-
-        require(receipt[tokenId].lastCheckpoint == 0, "Stake: Token is already staked");
-
-        // require this token is not already owned by this contract
-        require(nftToken.ownerOf(tokenId) != address(this), "Stake: Token is already staked in this contract");
-
-        // take possession of the NFT
-        nftToken.safeTransferFrom(msg.sender, address(this), tokenId);
-
-        // check that this contract is the owner
-        require(nftToken.ownerOf(tokenId) == address(this), "Stake: Failed to take possession of NFT");
-
-        _stakers[msg.sender].stakedNFTs.push(tokenId);
-
-        // start the staking from this block.
-        // receipt[tokenId].tokenId = tokenId;
-        // receipt[tokenId].lastCheckpoint = block.timestamp;
-        // receipt[tokenId].owner = msg.sender;
-        // receipt[tokenId].currentYield = computeYield(msg.sender);
-
-        // emit NftStaked(msg.sender, tokenId, block.number);
-
-        return true;
-    }
-
-    function _payoutStake(uint256 tokenId) internal {
+    function _payoutStake(address staker) internal {
         /* NOTE : Must be called from non-reentrant function to be safe!*/
 
         // double check that the receipt exists and we're not staking from block 0
-        require(receipt[tokenId].lastCheckpoint > 0, "_payoutStake: Can not Stake from block 0");
+        require(stakers[staker].lastCheckpoint > 0, "_payoutStake: Can not Stake from time 0");
 
         // earned amount is difference between the Stake start block, current block multiplied by Stake amount
-        uint256 timeStaked = _getTimeStaked(tokenId).sub(1); // don't pay for the tx block of withdrawl
-        uint256 payout = getCurrentStakeEarned(tokenId);
+        Staker memory user = stakers[staker];
+
+        uint256 payout = getPendingRewardSinceCheckpoint(staker) + user.accumulatedAmount;
+        
+        user.accumulatedAmount = 0;
+        user.lastCheckpoint = block.timestamp;        
 
         // If contract does not have enough tokens to pay out, return the NFT without payment
         // This prevent a NFT being locked in the contract when empty
         if (erc20Token.balanceOf(address(this)) < payout) {
-            emit StakePayout(msg.sender, tokenId, 0, receipt[tokenId].lastCheckpoint, block.number);
+            emit StakePayout(msg.sender, user.stakedNFTs, 0, user.lastCheckpoint, block.timestamp);
             return;
         }
 
         // payout Stake
-        erc20Token.transfer(receipt[tokenId].owner, payout);
+        erc20Token.transfer(staker, payout);
 
-        emit StakePayout(msg.sender, tokenId, payout, receipt[tokenId].lastCheckpoint, block.number);
+        emit StakePayout(msg.sender, user.stakedNFTs, payout, user.lastCheckpoint, block.timestamp);
     }
 
-    /**
-    * @dev Returns the time (in seconds) since the last timestamp.
-    */
-    function _getTimeStaked(uint256 tokenId) internal view returns (uint256) {
-        if (receipt[tokenId].lastCheckpoint == 0) {
-            return 0;
-        }
-
-        return block.timestamp.sub(receipt[tokenId].lastCheckpoint);
-    }
 
     /**
     * @dev Function allows admin withdraw ERC721 in case of emergency.
@@ -494,6 +431,9 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
       }
     }
 
+    /**
+    * @dev Function to update the reward constants
+    */
     function setRewards(uint256 [12] memory _god_reward, uint256 [5] memory _type_reward,
      uint256 [3] memory _single_rewards,  uint256 [13] memory _coupling_rewards) public{
         god_reward = _god_reward;
@@ -518,5 +458,105 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
       depositPaused = _pause;
     }
 
-     
+
+    //// =============== UTILITY FUNCTIONS =================
+
+    /**
+    * @dev True if a given element is in the array
+    */
+    function elementInArray(uint256[] memory list, uint256 tokenId) internal pure returns (bool) {
+      uint256 length = list.length;
+
+      for(uint256 i = 0; i < length; i++) {
+        if (list[i] == tokenId) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    /**
+    * @dev True if all elements in `gods_list` are greater than 0 in `staked_gods`
+    */
+    function godsListMatches(uint256[] memory gods_list, 
+    uint256 [12] memory staked_gods) internal pure returns (bool) {
+        bool matched = true;
+
+        for (uint256 j; j < gods_list.length; j++) {
+            if (gods_list[j] != 255 && staked_gods[gods_list[j]] <= 0) {
+                matched = false;
+                break;
+                }
+            }
+        return matched;
+    }
+
+
 }
+
+
+
+    /**
+    * @dev TODO remove this function
+    */
+    // function _stakeNFT(uint256 tokenId) internal returns (bool) {
+    //     // require this token is not already staked
+
+    //     require(receipt[tokenId].lastCheckpoint == 0, "Stake: Token is already staked");
+
+    //     // require this token is not already owned by this contract
+    //     require(nftToken.ownerOf(tokenId) != address(this), "Stake: Token is already staked in this contract");
+
+    //     // take possession of the NFT
+    //     nftToken.safeTransferFrom(msg.sender, address(this), tokenId);
+
+    //     // check that this contract is the owner
+    //     require(nftToken.ownerOf(tokenId) == address(this), "Stake: Failed to take possession of NFT");
+
+    //     stakers[msg.sender].stakedNFTs.push(tokenId);
+
+    //     // start the staking from this block.
+    //     // receipt[tokenId].tokenId = tokenId;
+    //     // receipt[tokenId].lastCheckpoint = block.timestamp;
+    //     // receipt[tokenId].owner = msg.sender;
+    //     // receipt[tokenId].currentYield = computeYield(msg.sender);
+
+    //     // emit NftStaked(msg.sender, tokenId, block.number);
+
+    //     return true;
+    // }
+
+
+
+    // TODO check if anything useful in here
+
+    // function _unStakeNFT(uint256 tokenId) internal onlyStaker(tokenId) requireTimeElapsed(tokenId) returns (bool) {
+    //     // payout Stake, this should be safe as the function is non-reentrant
+    //     _payoutStake(tokenId);
+
+    //     // delete Stake record, effectively unstaking it
+    //     delete receipt[tokenId];
+
+    //     // return token
+    //     nftToken.safeTransferFrom(address(this), msg.sender, tokenId);
+
+    //     emit NftUnStaked(msg.sender, tokenId, block.number);
+
+    //     return true;
+    // }
+
+
+
+    // modifier onlyStaker(uint256 tokenId) {
+    //     // require that this contract has the NFT
+    //     require(nftToken.ownerOf(tokenId) == address(this), "onlyStaker: Contract is not owner of this NFT");
+
+    //     // require that this token is staked
+    //     require(receipt[tokenId].lastCheckpoint != 0, "onlyStaker: Token is not staked");
+
+    //     // require that msg.sender is the owner of this nft
+    //     require(receipt[tokenId].owner == msg.sender, "onlyStaker: Caller is not NFT stake owner");
+
+    //     _;
+    // }
