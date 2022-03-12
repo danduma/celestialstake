@@ -342,18 +342,23 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             uint256 tokenId = _stakers[_staker].stakedNFTs[i];
 
             staked_gods[pieceInfo[tokenId].God] += 1;
-            if (pieceInfo[tokenId].Set != 0) {
+            if (pieceInfo[tokenId].Set != 255) {
                 staked_sets[pieceInfo[tokenId].Set] += 1;
             }
 
             yield += god_reward[pieceInfo[tokenId].God];
         }
 
-        for (uint256 i; i < couplings.length; i++) {
-          uint256 [] memory gods_list = new uint256[](couplings[i].length);
+        for (uint256 i; i < staked_sets.length; i++) {
+          if (staked_sets[i] > 0){
+            yield += single_rewards[uint256(SingleReward.SAME_SET)] * staked_sets[i];
+          }
+        }
 
+        for (uint256 i; i < couplings.length; i++) {
           // this is fucking retarded, because Solidity won't let me cast a static array
           // to a dynamic array
+          uint256 [] memory gods_list = new uint256[](couplings[i].length);
            for (uint256 j; j < couplings[i].length; j++) {
               gods_list[j]=couplings[i][j];
            }
@@ -363,13 +368,13 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
               }
         }
 
-        yield += computeEdgeCaseYield(staked_gods);
+        yield += computeCouplingsYield(staked_gods);
 
         return yield;
     }
 
     // Broken out to get around the complexity of the function
-    function computeEdgeCaseYield(uint256[12] memory staked_gods) public view returns (uint256) {
+    function computeCouplingsYield(uint256[12] memory staked_gods) public view returns (uint256) {
         uint256 yield = 0;
 
         // sky, sea and soul
