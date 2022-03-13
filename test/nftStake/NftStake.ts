@@ -1,3 +1,4 @@
+const fs = require("fs");
 import hre from "hardhat";
 import { Artifact } from "hardhat/types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
@@ -22,39 +23,41 @@ describe("Unit tests", function () {
     this.signers.user1 = signers[1];
     this.signers.user2 = signers[2];
     this.signers.dao = signers[3];
+
+    this.testData = JSON.parse(fs.readFileSync(__dirname + "/contract_test_data.json", "utf8"));
+    
+    this.token_data = [this.testData.plain.Artemis]
   });
 
   describe("NFTStake", function () {
     beforeEach(async function () {
-      this.tokensPerBlock = 2;
-
       // deploy erc20
       const erc20Artifact: Artifact = await hre.artifacts.readArtifact("MockERC20");
-      this.mockERC20 = <MockERC20>await deployContract(this.signers.admin, erc20Artifact, [1000]);
+      this.erc20Token = <MockERC20>await deployContract(this.signers.admin, erc20Artifact, [1000]);
 
       // deploy erc721
       const erc721Artifact: Artifact = await hre.artifacts.readArtifact("MockERC721");
-      this.mockERC721 = <MockERC721>await deployContract(this.signers.admin, erc721Artifact, []);
+      this.nftToken = <MockERC721>await deployContract(this.signers.admin, erc721Artifact, []);
 
       // deploy NFTStake
       const nftStakeArtifact: Artifact = await hre.artifacts.readArtifact("NftStake");
       this.nftStake = <NftStake>(
         await deployContract(this.signers.admin, nftStakeArtifact, [
-          this.mockERC721.address,
-          this.mockERC20.address,
+          this.nftToken.address,
+          this.erc20Token.address,
           await this.signers.dao.getAddress()
         ])
       );
 
       // Send erc20 balance to NFTStake
-      const adminTokenInstance: MockERC20 = <MockERC20>await this.mockERC20.connect(this.signers.admin);
+      const adminTokenInstance: MockERC20 = <MockERC20>await this.erc20Token.connect(this.signers.admin);
       await adminTokenInstance.transfer(
         this.nftStake.address,
         await adminTokenInstance.balanceOf(await this.signers.admin.getAddress()),
       );
 
       // Mint some NFTS
-      const adminERC721Instance: MockERC721 = <MockERC721>await this.mockERC721.connect(this.signers.admin);
+      const adminERC721Instance: MockERC721 = <MockERC721>await this.nftToken.connect(this.signers.admin);
 
       // user1 has tokenId 1
       // user2 has tokenId 2

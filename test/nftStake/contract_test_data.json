@@ -1,0 +1,298 @@
+{
+   "set": [
+      {
+         "God": 11,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 4,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 6,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 2,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 5,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 8,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 9,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 0,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 7,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 3,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 1,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      },
+      {
+         "God": 10,
+         "Type": 1,
+         "Attributes": 0,
+         "Set": 0
+      }
+   ],
+   "plain": {
+      "Hermes": {
+         "God": 0,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Aphrodite": {
+         "God": 1,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Zeus": {
+         "God": 2,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Artemis": {
+         "God": 3,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Poseidon": {
+         "God": 4,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Hera": {
+         "God": 5,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Hephaestus": {
+         "God": 6,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Apollo": {
+         "God": 7,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Dionysus": {
+         "God": 8,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Athena": {
+         "God": 9,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Ares": {
+         "God": 10,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      },
+      "Hades": {
+         "God": 11,
+         "Type": 0,
+         "Attributes": 0,
+         "Set": 0
+      }
+   },
+   "cosmic_plating": {
+      "Hermes": {
+         "God": 0,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Aphrodite": {
+         "God": 1,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Zeus": {
+         "God": 2,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Artemis": {
+         "God": 3,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Poseidon": {
+         "God": 4,
+         "Type": 0,
+         "Attributes": 3,
+         "Set": 0
+      },
+      "Hera": {
+         "God": 5,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Hephaestus": {
+         "God": 6,
+         "Type": 0,
+         "Attributes": 3,
+         "Set": 0
+      },
+      "Apollo": {
+         "God": 7,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Dionysus": {
+         "God": 8,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Athena": {
+         "God": 9,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Ares": {
+         "God": 10,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      },
+      "Hades": {
+         "God": 11,
+         "Type": 0,
+         "Attributes": 1,
+         "Set": 0
+      }
+   },
+   "glow": {
+      "Hermes": {
+         "God": 0,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Aphrodite": {
+         "God": 1,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Zeus": {
+         "God": 2,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Artemis": {
+         "God": 3,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Poseidon": {
+         "God": 4,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Hera": {
+         "God": 5,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Hephaestus": {
+         "God": 6,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Apollo": {
+         "God": 7,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Dionysus": {
+         "God": 8,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Athena": {
+         "God": 9,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Ares": {
+         "God": 10,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      },
+      "Hades": {
+         "God": 11,
+         "Type": 0,
+         "Attributes": 2,
+         "Set": 0
+      }
+   }
+}

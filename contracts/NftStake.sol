@@ -9,41 +9,44 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "hardhat/console.sol";
 
-enum SingleReward {
-  COSMIC,
-  GLOW,
-  SAME_SET
-}
-
-enum CoupleReward {
-  Monarchs,
-  Twins,
-  FielsAndForests,
-  SkyAndSea,
-  SkyAndSoul,
-  SeaAndSoul,
-  SkySeaAndSoul,
-  LoveAndHaste,
-  LoveAndSpite,
-  LoveAndWar,
-  GodsOfWar,
-  JoyOfWine,
-  Pantheon
-}
-
-enum God {
-  Hermes, Aphrodite, Zeus, Artemis, Poseidon, Hera, 
-  Hephaestus, Apollo, Dionysus, Athena, Ares, Hades
-}
-
-enum Type {
-  Default, Curated, Community, Honorary, Legendary
-}
+//   enum CoupleReward {
+//     Monarchs,
+//     Twins,
+//     FielsAndForests,
+//     SkyAndSea,
+//     SkyAndSoul,
+//     SeaAndSoul,
+//     SkySeaAndSoul,
+//     LoveAndHaste,
+//     LoveAndSpite,
+//     LoveAndWar,
+//     GodsOfWar,
+//     JoyOfWine,
+//     Pantheon
+// }
 
 contract NftStake is IERC721Receiver, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant SECONDS_IN_DAY = 24 * 60 * 60;
+    
+    uint8 private constant AttributeCosmic = 1;
+    uint8 private constant AttributeGlow = 2;
+    
+    enum SingleReward {
+      COSMIC,
+      GLOW,
+      SAME_SET
+    }
+
+    enum God {
+      Hermes, Aphrodite, Zeus, Artemis, Poseidon, Hera, 
+      Hephaestus, Apollo, Dionysus, Athena, Ares, Hades
+    }
+
+    enum Type {
+      Default, Curated, Community, Honorary, Legendary
+    }
 
     IERC721 public nftToken;
     IERC20 public erc20Token;
@@ -88,9 +91,9 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     // TokenID => Stake
-    mapping(address => Staker) private stakers;
+    mapping(address => Staker) public stakers;
     mapping(uint256 => PieceInfo) public pieceInfo;
-    
+    mapping(uint256 => address) public ownerOfToken;
 
     // Events
     event NftStaked(address indexed staker, uint256[] tokenIds, uint256 blockNumber);
@@ -102,7 +105,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     modifier requireTimeElapsed(address staker) {
         // require that some time has elapsed (IE you can not Stake and unstake in the same block)
         require(
-            stakers[stakers].lastCheckpoint < block.timestamp,
+            stakers[staker].lastCheckpoint < block.timestamp,
             "requireTimeElapsed: Can not Stake/unStake/harvest in same block"
         );
         _;
@@ -179,7 +182,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         require(nftToken.ownerOf(tokenIds[i]) == _msgSender, "!Owner");
         nftToken.safeTransferFrom(_msgSender, address(this), tokenIds[i]);
 
-        // _ownerOfToken[tokenIds[i]] = _msgSender;
+        ownerOfToken[tokenIds[i]] = _msgSender;
         user.stakedNFTs.push(tokenIds[i]);
     }
 
@@ -227,7 +230,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     /**
     * @dev UNSTAKE NFTs from the staking contract.
     */
-    function unStakeNFT(uint256[] memory tokenIds) public nonReentrant returns (bool) {
+    function unStakeNFT(uint256[] memory tokenIds) public nonReentrant {
 
       address _msgSender = msg.sender;
 
@@ -237,13 +240,15 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
       accumulate(_msgSender);
       _payoutStake(_msgSender);
 
+      user.accumulatedAmount = 0;
+      user.lastCheckpoint = block.timestamp;        
 
       for (uint256 i; i < tokenIds.length; i++) {
         require(elementInArray(stakers[_msgSender].stakedNFTs, tokenIds[i]), "NFT not staked by the caller");
 
         require(nftToken.ownerOf(tokenIds[i]) == address(this), "Not in staking contract");
 
-        // _ownerOfToken[tokenIds[i]] = address(0);
+        delete ownerOfToken[tokenIds[i]];
 
         user.stakedNFTs = _moveTokenInTheList(user.stakedNFTs, tokenIds[i]);
         user.stakedNFTs.pop();
@@ -260,7 +265,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
       } else {
         user.currentYield = newYield;
       }
-    }
 
     //   emit Withdraw(_msgSender(), tokenIds.length);
     }
@@ -272,7 +276,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         // This 'payout first' should be safe as the function is nonReentrant
         _payoutStake(staker);
 
-        // update receipt with a new block number
+        // update user's yield and timestamp
+        stakers[staker].accumulatedAmount = 0;
         stakers[staker].lastCheckpoint = block.timestamp;
     }
 
@@ -386,9 +391,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         Staker memory user = stakers[staker];
 
         uint256 payout = getPendingRewardSinceCheckpoint(staker) + user.accumulatedAmount;
-        
-        user.accumulatedAmount = 0;
-        user.lastCheckpoint = block.timestamp;        
 
         // If contract does not have enough tokens to pay out, return the NFT without payment
         // This prevent a NFT being locked in the contract when empty
@@ -411,8 +413,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
       require(tokenIds.length <= 50, "50 is max per tx");
       pauseDeposit(true);
       for (uint256 i; i < tokenIds.length; i++) {
-        // address receiver = _ownerOfToken[tokenIds[i]];
-        address receiver = receipt[tokenIds[i]].owner;
+        address receiver = ownerOfToken[tokenIds[i]];
+
         if (receiver != address(0) && nftToken.ownerOf(tokenIds[i]) == address(this)) {
           nftToken.transferFrom(address(this), receiver, tokenIds[i]);
         //   emit WithdrawStuckERC721(receiver, tokenIds[i]);
