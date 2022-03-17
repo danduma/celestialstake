@@ -1,11 +1,7 @@
 {
-  "name": "@paulrberg/solidity-template",
-  "description": "Setup for writing Solidity smart contracts",
+  "name": "Celestialstake",
+  "description": "Celestials staking contract, based on @paulrberg/solidity-template",
   "version": "1.0.0",
-  "author": {
-    "name": "Paul Razvan Berg",
-    "url": "https://paulrberg.com"
-  },
   "devDependencies": {
     "@codechecks/client": "^0.1.11",
     "@commitlint/cli": "^13.1.0",
@@ -78,7 +74,8 @@
     "prettier": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,json,md,sol,ts}\"",
     "prettier:check": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,json,md,sol,ts}\"",
     "test": "hardhat test",
-    "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain"
+    "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
+    "debug": "yarn debug:hardhat"
   },
   "dependencies": {
     "@openzeppelin/contracts": ">=4.3.1"

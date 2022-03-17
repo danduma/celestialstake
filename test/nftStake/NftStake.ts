@@ -22,7 +22,6 @@ describe("Unit tests", function () {
     this.signers.admin = signers[0];
     this.signers.user1 = signers[1];
     this.signers.user2 = signers[2];
-    this.signers.dao = signers[3];
 
     this.testData = JSON.parse(fs.readFileSync(__dirname + "/contract_test_data.json", "utf8"));
     
@@ -45,9 +44,12 @@ describe("Unit tests", function () {
         await deployContract(this.signers.admin, nftStakeArtifact, [
           this.nftToken.address,
           this.erc20Token.address,
-          await this.signers.dao.getAddress()
+          await this.signers.admin.getAddress()
         ])
       );
+
+      // unpause the initially paused contract
+      await this.nftStake.connect(this.signers.admin).pauseDeposit(false);
 
       // Send erc20 balance to NFTStake
       const adminTokenInstance: MockERC20 = <MockERC20>await this.erc20Token.connect(this.signers.admin);
