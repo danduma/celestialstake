@@ -29,6 +29,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant SECONDS_IN_DAY = 24 * 60 * 60;
+    uint8 private constant NUM_COUPLING_REWARDS = 13;
     
     uint8 private constant AttributeCosmic = 1;
     uint8 private constant AttributeGlow = 2;
@@ -36,7 +37,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     enum SingleReward {
       COSMIC,
       GLOW,
-      SAME_SET
+      SAME_SET,
+      LEGENDARY_SYNERGY
     }
 
     enum God {
@@ -58,9 +60,9 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     uint256 [12] public god_reward = [115, 100, 100, 110, 125, 160, 170, 180, 175, 200, 250, 500];
     uint256 [5] public type_reward = [0, 200, 200, 200, 700];
-    uint256 [3] public single_rewards = [25, 15, 100];
-    // last 3: (Zeus, Poseidon, Hades), Dyonysus, Olympus
-    uint256 [13] public coupling_rewards = [130, 130, 75, 75, 150, 175, 75, 130, 100, 150, 275, 50, 1000]; 
+    uint256 [4] public single_rewards = [25, 15, 100, 200];
+    // last 3: (Zeus, Poseidon, Hades), Dionysus, Olympus
+    uint256 [NUM_COUPLING_REWARDS] public coupling_rewards = [130, 130, 75, 75, 150, 175, 75, 130, 100, 150, 275, 50, 1000]; 
 
     uint256[2][13] public couplings = [
         [uint256(God.Zeus), uint256(God.Hera)],
@@ -332,6 +334,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             }
 
             yield += god_reward[pieceInfo[tokenId].God];
+            yield += type_reward[pieceInfo[tokenId].Type];
         }
 
         for (uint256 i; i < staked_sets.length; i++) {
@@ -353,7 +356,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
               }
         }
 
-        yield += computeCouplingsYield(staked_gods);
+        yield += computeCouplingsYield(staked_gods, _staker);
 
         return yield;
     }
@@ -361,7 +364,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     /**
     * @dev Splintered from computeYield() to get around code complexity issues
     */
-    function computeCouplingsYield(uint256[12] memory staked_gods) public view returns (uint256) {
+    function computeCouplingsYield(uint256[12] memory staked_gods, address _staker) public view returns (uint256) {
         uint256 yield = 0;
 
         // sky, sea and soul
@@ -369,6 +372,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         gods_list3[0] =uint256(God.Zeus);
         gods_list3[1] =uint256(God.Poseidon);
         gods_list3[2] =uint256(God.Hades);
+
         if (godsListMatches(gods_list3, staked_gods)) {
             yield += coupling_rewards[10];
         }
@@ -385,6 +389,18 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         // Dionysus & anyone else
         if (staked_gods[uint256(God.Dionysus)] > 0 && num_gods > 1){
             yield += coupling_rewards[11];
+        }
+
+        // Legendary & anyone else
+        if (num_gods > 1){
+            for (uint256 i; i < stakers[_staker].stakedNFTs.length; i++) {
+              uint256 tokenId = stakers[_staker].stakedNFTs[i];
+
+              if (pieceInfo[tokenId].Type == uint8(Type.Legendary)) {
+                  yield += single_rewards[uint256(SingleReward.LEGENDARY_SYNERGY)];
+                  break;
+              }
+           }
         }
 
         // Olympus: full house
@@ -450,7 +466,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     * @dev Function to update the reward constants
     */
     function setRewards(uint256 [12] memory _god_reward, uint256 [5] memory _type_reward,
-     uint256 [3] memory _single_rewards,  uint256 [13] memory _coupling_rewards) public{
+     uint256 [4] memory _single_rewards,  uint256 [NUM_COUPLING_REWARDS] memory _coupling_rewards) public{
         god_reward = _god_reward;
         type_reward = _type_reward;
         single_rewards = _single_rewards;
