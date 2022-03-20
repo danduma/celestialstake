@@ -100,7 +100,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     event NftStaked(address indexed staker, uint256[] tokenIds, uint256 blockNumber);
     event NftUnStaked(address indexed staker, uint256[] tokenIds, uint256 blockNumber);
     event StakePayout(address indexed staker, uint256[] tokenIds, uint256 stakeAmount, uint256 fromTime, uint256 toTime);
-    // event StakeRewardUpdated(uint256 rewardPerBlock);
+    event WithdrawStuckERC721(address indexed receiver, uint256 tokenId);
+    event StakeRewardUpdated();
 
 
     modifier requireTimeElapsed(address staker) {
@@ -204,7 +205,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     user.currentYield = computeYield(_msgSender);
     stakers[_msgSender] = user;
 
-    //   emit Deposit(_msgSender(), tokenIds.length);    
+    emit NftStaked(_msgSender, tokenIds, block.number);
     }
 
     /**
@@ -292,7 +293,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         stakers[_msgSender] = user;
       }
 
-    //   emit Withdraw(_msgSender(), tokenIds.length);
+      emit NftUnStaked(_msgSender, tokenIds, block.number);
     }
 
     /**
@@ -457,7 +458,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         if (receiver != address(0) && nftToken.ownerOf(tokenIds[i]) == address(this)) {
           nftToken.transferFrom(address(this), receiver, tokenIds[i]);
-        //   emit WithdrawStuckERC721(receiver, tokenIds[i]);
+          emit WithdrawStuckERC721(receiver, tokenIds[i]);
         }
       }
     }
@@ -471,7 +472,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         type_reward = _type_reward;
         single_rewards = _single_rewards;
         coupling_rewards = _coupling_rewards;
-        // emit StakeRewardUpdated(tokensPerBlock);
+        emit StakeRewardUpdated();
      }
 
 
