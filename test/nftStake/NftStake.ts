@@ -14,6 +14,8 @@ import { shouldBehaveLikeNftStake } from "./NftStake.behavior";
 
 const { deployContract } = hre.waffle;
 
+const DECIMALS = 10 ** 18;
+
 describe("Unit tests", function () {
   before(async function () {
     this.signers = {} as Signers;
@@ -32,7 +34,7 @@ describe("Unit tests", function () {
     beforeEach(async function () {
       // deploy erc20
       const erc20Artifact: Artifact = await hre.artifacts.readArtifact("MockERC20");
-      this.erc20Token = <MockERC20>await deployContract(this.signers.admin, erc20Artifact, [1000]);
+      this.erc20Token = <MockERC20>await deployContract(this.signers.admin, erc20Artifact, [BigInt(10000000 * DECIMALS)]);
 
       // deploy erc721
       const erc721Artifact: Artifact = await hre.artifacts.readArtifact("MockERC721");

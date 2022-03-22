@@ -41,6 +41,13 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
       LEGENDARY_SYNERGY
     }
 
+    enum Attributes {
+      COSMIC,
+      GLOW
+    }
+
+    uint8[2] private AttributeBits = [1,2];  
+
     enum God {
       Hermes, Aphrodite, Zeus, Artemis, Poseidon, Hera, 
       Hephaestus, Apollo, Dionysus, Athena, Ares, Hades
@@ -58,10 +65,16 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     // Admin / owner / controller address 
     address public admin;
 
+    uint256 public constant DECIMALS = 10**18;
+
+    // Hermes, Aphrodite, Zeus, Artemis, Poseidon, Hera, Hephaestus, Apollo, 
+    // Dionysus, Athena, Ares, Hades
     uint256 [12] public god_reward = [115, 100, 100, 110, 125, 160, 170, 180, 175, 200, 250, 500];
+    // Default, Curated, Community, Honorary, Legendary
     uint256 [5] public type_reward = [0, 200, 200, 200, 700];
+    // Cosmic, Glow, Same Set, Legendary Synergy
     uint256 [4] public single_rewards = [25, 15, 100, 200];
-    // last 3: (Zeus, Poseidon, Hades), Dionysus, Olympus
+    // last 3: (Zeus, Poseidon, Hades), Dionysus + any, Olympus
     uint256 [NUM_COUPLING_REWARDS] public coupling_rewards = [130, 130, 75, 75, 150, 175, 75, 130, 100, 150, 275, 50, 1000]; 
 
     uint256[2][13] public couplings = [
@@ -148,6 +161,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     function accumulate(address staker) internal {
       stakers[staker].accumulatedAmount += getPendingReward(staker);
       stakers[staker].lastCheckpoint = block.timestamp;
+      console.log("stakers[staker].accumulatedAmount");
+      console.log(stakers[staker].accumulatedAmount );
     }
 
     function _setTokensValues(
@@ -264,9 +279,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         require(nftToken.ownerOf(tokenIds[i]) == address(this), "Not in staking contract");
 
-        console.log("Owner should be staking contract");
-        console.log(nftToken.ownerOf(tokenIds[i]));
-
+        // console.log("Owner should be staking contract");
+        // console.log(nftToken.ownerOf(tokenIds[i]));
 
         delete ownerOfToken[tokenIds[i]];
 
@@ -281,8 +295,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         
         nftToken.safeTransferFrom(address(this), _msgSender, tokenIds[i]);
 
-        console.log("Owner should be caller:");
-        console.log(nftToken.ownerOf(tokenIds[i]));
+        // console.log("Owner should be caller:");
+        // console.log(nftToken.ownerOf(tokenIds[i]));
       }
 
 
@@ -300,6 +314,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     * @dev External function to harvest the generated yield
     */
     function harvest(address staker) public nonReentrant requireTimeElapsed(staker) {
+        require(msg.sender == staker, "Only the staker can harvest");
+
         // This 'payout first' should be safe as the function is nonReentrant
         _payoutStake(staker);
 
@@ -326,6 +342,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         uint256 yield = 0;
         
+        // First we list all unique gods and sets and 
         for (uint256 i; i < stakers[_staker].stakedNFTs.length; i++) {
             uint256 tokenId = stakers[_staker].stakedNFTs[i];
 
@@ -334,18 +351,29 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
                 staked_sets[pieceInfo[tokenId].Set] += 1;
             }
 
-            yield += god_reward[pieceInfo[tokenId].God];
-            yield += type_reward[pieceInfo[tokenId].Type];
+            // Add to the yield the base reward for each god and type (Curated, Legendary, etc.)
+            yield += god_reward[pieceInfo[tokenId].God] * DECIMALS;
+            yield += type_reward[pieceInfo[tokenId].Type] * DECIMALS;
+
+            // Add to the yield the reward for each attribute we care about
+            for(uint8 attr_counter = 0; attr_counter < AttributeBits.length; attr_counter++) {
+               if ((pieceInfo[tokenId].Attributes & AttributeBits[attr_counter]) > 0) {
+                yield += single_rewards[attr_counter - 1] * DECIMALS;
+              }
+            }
+          
         }
 
+        // If we have more than 1 god of a set, add the set reward
         for (uint256 i; i < staked_sets.length; i++) {
           if (staked_sets[i] > 0){
-            yield += single_rewards[uint256(SingleReward.SAME_SET)] * staked_sets[i];
+            yield += single_rewards[uint256(SingleReward.SAME_SET)] * DECIMALS * staked_sets[i];
           }
         }
 
+        // Add the god + god combination reward
         for (uint256 i; i < couplings.length; i++) {
-          // this is fucking retarded, because Solidity won't let me cast a static array
+          // this is fucking retarded, but Solidity won't let you cast a static array
           // to a dynamic array
           uint256 [] memory gods_list = new uint256[](couplings[i].length);
            for (uint256 j; j < couplings[i].length; j++) {
@@ -353,10 +381,11 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
            }
             
             if (godsListMatches(gods_list, staked_gods)) {
-                yield += coupling_rewards[i];
+                yield += coupling_rewards[i] * DECIMALS;
               }
         }
 
+        // Next part of the function is made a second function because the EVM is stupid
         yield += computeCouplingsYield(staked_gods, _staker);
 
         return yield;
@@ -368,14 +397,14 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     function computeCouplingsYield(uint256[12] memory staked_gods, address _staker) public view returns (uint256) {
         uint256 yield = 0;
 
-        // sky, sea and soul
+        // sky, sea and soul. Only coupling of 3
         uint256[] memory gods_list3 = new uint256[](3);
         gods_list3[0] =uint256(God.Zeus);
         gods_list3[1] =uint256(God.Poseidon);
         gods_list3[2] =uint256(God.Hades);
 
         if (godsListMatches(gods_list3, staked_gods)) {
-            yield += coupling_rewards[10];
+            yield += coupling_rewards[10] * DECIMALS;
         }
 
         // count the number of gods we have more than 0 of
@@ -389,7 +418,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         // Dionysus & anyone else
         if (staked_gods[uint256(God.Dionysus)] > 0 && num_gods > 1){
-            yield += coupling_rewards[11];
+            yield += coupling_rewards[11] * DECIMALS;
         }
 
         // Legendary & anyone else
@@ -398,7 +427,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
               uint256 tokenId = stakers[_staker].stakedNFTs[i];
 
               if (pieceInfo[tokenId].Type == uint8(Type.Legendary)) {
-                  yield += single_rewards[uint256(SingleReward.LEGENDARY_SYNERGY)];
+                  yield += single_rewards[uint256(SingleReward.LEGENDARY_SYNERGY)] * DECIMALS;
                   break;
               }
            }
@@ -406,7 +435,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         // Olympus: full house
         if (num_gods == 12) {
-            yield += coupling_rewards[12];
+            yield += coupling_rewards[12] * DECIMALS;
         }
 
         return yield;
@@ -417,9 +446,18 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     */
     function getPendingReward(address staker) public view returns (uint256) {
       Staker memory user = stakers[staker];
-      if (user.lastCheckpoint == 0) { return 0; }
-
-      return (block.timestamp - user.lastCheckpoint) * user.currentYield / SECONDS_IN_DAY;
+      if (user.lastCheckpoint == 0) { 
+        console.log("Last checkpoint is 0");
+        return 0; 
+        }
+      
+      uint256 timeElapsed = (block.timestamp - user.lastCheckpoint);
+      uint256 pendingReward = timeElapsed * (user.currentYield.div(SECONDS_IN_DAY));
+      // console.log("timeElapsed:");
+      // console.log(timeElapsed);
+      // console.log("pendingReward:");
+      // console.log(pendingReward);
+      return pendingReward;
     }
 
     function _payoutStake(address staker) internal {
@@ -436,6 +474,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         // If contract does not have enough tokens to pay out, return the NFT without payment
         // This prevent a NFT being locked in the contract when empty
         if (erc20Token.balanceOf(address(this)) < payout) {
+            console.log("Not enough tokens to pay out (!!)");
             emit StakePayout(msg.sender, user.stakedNFTs, 0, user.lastCheckpoint, block.timestamp);
             return;
         }
