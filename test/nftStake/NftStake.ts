@@ -27,18 +27,20 @@ describe("Unit tests", function () {
     this.signers.admin = signers[0];
     this.signers.user1 = signers[1];
     this.signers.user2 = signers[2];
-    
+
     this.testData = testData;
-    this.rewards = <Rewards> loadJSON('rewards.json');
-    
-    this.token_data = [this.testData.plain.Artemis]
+    this.rewards = <Rewards>loadJSON("rewards.json");
+
+    this.token_data = [this.testData.plain.Artemis];
   });
 
   describe("NFTStake", function () {
     beforeEach(async function () {
       // deploy erc20
       const erc20Artifact: Artifact = await hre.artifacts.readArtifact("MockERC20");
-      this.erc20Token = <MockERC20>await deployContract(this.signers.admin, erc20Artifact, [BigInt(10000000 * DECIMALS)]);
+      this.erc20Token = <MockERC20>(
+        await deployContract(this.signers.admin, erc20Artifact, [BigInt(10000000 * DECIMALS)])
+      );
 
       // deploy erc721
       const erc721Artifact: Artifact = await hre.artifacts.readArtifact("MockERC721");
@@ -50,7 +52,7 @@ describe("Unit tests", function () {
         await deployContract(this.signers.admin, nftStakeArtifact, [
           this.nftToken.address,
           this.erc20Token.address,
-          await this.signers.admin.getAddress()
+          await this.signers.admin.getAddress(),
         ])
       );
 
@@ -69,11 +71,11 @@ describe("Unit tests", function () {
 
       // user1 has tokenId 1
       // user2 has tokenId 2
-      for(let i = 0; i < 10; i++){
-        await adminERC721Instance.mint(await this.signers.user1.getAddress(), "TokenURL " + (i+1));  
+      for (let i = 0; i < 20; i++) {
+        await adminERC721Instance.mint(await this.signers.user1.getAddress(), "TokenURL " + (i + 1));
       }
-       
-      await adminERC721Instance.mint(await this.signers.user2.getAddress(), "TokenURL 11");
+
+      await adminERC721Instance.mint(await this.signers.user2.getAddress(), "TokenURL 21");
     });
 
     shouldBehaveLikeNftStake(testData);

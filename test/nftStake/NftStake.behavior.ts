@@ -6,73 +6,78 @@ import { localComputeYield, PieceInfo } from "./test_helpers";
 
 const SECONDS_IN_DAY = 24 * 60 * 60;
 
-export async function getLatestBlock(provider:any): Promise<Block> {
+export async function getLatestBlock(provider: any): Promise<Block> {
   return await network.provider.send("eth_getBlockByNumber", ["latest", false]);
 }
 
-export async function getLatestTimestamp(provider:any): Promise<number> {
+export async function getLatestTimestamp(provider: any): Promise<number> {
   return (await network.provider.send("eth_getBlockByNumber", ["latest", false])).timestamp;
 }
 
-export async function checkYieldMatches(this1:any, pieces:Array<PieceInfo>){
-  
-  let localYield = <BigInt> localComputeYield(pieces, this1.rewards);
+export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
+  let localYield = <BigInt>localComputeYield(pieces, this1.rewards);
 
-  let piece_ids=[];
+  let piece_ids = [];
 
-  for(let i=0; i < pieces.length; i++){
-    piece_ids[i] = BigNumber.from(i+1);
-  
+  for (let i = 0; i < pieces.length; i++) {
+    piece_ids[i] = BigNumber.from(i + 1);
+
     // approve the transfer
     await this1.nftToken.connect(this1.signers.user1).approve(this1.nftStake.address, piece_ids[i]);
   }
 
   // stake the required pieces
-  await expect(this1.nftStake.connect(this1.signers.user1).stakeNFT(piece_ids, pieces)).to.not
-  .be.reverted;
+  await expect(this1.nftStake.connect(this1.signers.user1).stakeNFT(piece_ids, pieces)).to.not.be.reverted;
 
   let initial_time = await getLatestTimestamp(network.provider);
 
   // let some time pass
   await network.provider.send("evm_mine");
 
-  let final_time = await getLatestTimestamp(network.provider)
+  let final_time = await getLatestTimestamp(network.provider);
 
-  let localReward =  (final_time - initial_time) * (Number(localYield) / SECONDS_IN_DAY);
-  
-  let contractReward = (await this1.nftStake.connect(this1.signers.user1).getPendingReward(this1.signers.user1.address)).toNumber();
+  let localReward = BigInt(Math.round((final_time - initial_time) * (Number(localYield) / 1000000 / SECONDS_IN_DAY)));
 
-  expect(contractReward).to.eql(Math.round(localReward));
-  
+  let contractReward =
+    (await this1.nftStake.connect(this1.signers.user1).getPendingReward(this1.signers.user1.address)).toBigInt() /
+    BigInt(1000000);
+
+  let diff = Math.abs(Number(contractReward - localReward));
+
+  // if (contractReward != localReward){
+  // if (diff > 2) {
+  //   console.log("contractReward != localReward");
+  //   console.log(contractReward);
+  //   console.log(localReward);
+  // }
+
+  expect(diff).to.be.lessThan(2);
+
+  await network.provider.send("evm_mine");
 }
 
-
-export function shouldBehaveLikeNftStake(testData:any): void {
-
+export function shouldBehaveLikeNftStake(testData: any): void {
   let counter = 0;
 
-  let testCases =[
-    [testData.plain.Artemis],         // single god
+  let testCases = [
+    [testData.plain.Artemis], // single god
     [testData.cosmic_plating.Hermes], // single god with cosmic plating
-    [testData.glow.Aphrodite],        // single god with glowing hair
+    [testData.glow.Aphrodite], // single god with glowing hair
     [testData.plain.Athena, testData.plain.Ares], // god pair
     [testData.plain.Zeus, testData.plain.Poseidon, testData.plain.Hades], // Sky, Sea, Soul
-    testData.set,                     // Full set
+    testData.set, // Full set
     [testData.plain.Dionysus, testData.plain.Hera], // Dionysus + 1
     [testData.plain.Dionysus, testData.plain.Zeus], // Dionysus + 1
   ];
 
   testCases.forEach(pieces => {
-
-    it("staking combinations should yield the expected reward: " + counter, async function () {
+    it("staking combinations should yield the expected reward: " + (counter + 1), async function () {
       // let pieces = [this.testData.plain.Artemis];
       await checkYieldMatches(this, pieces);
     });
 
-    counter +=1;
-      
+    counter += 1;
   });
-
 
   // it("should let user stake NFT", async function () {
   //   // Need to approve the token first
@@ -160,7 +165,6 @@ export function shouldBehaveLikeNftStake(testData:any): void {
   //   ).to.eql(0);
   // });
 
-
   // it("should allow harvesting without withdrawal", async function () {
   //   const tokenId = BigNumber.from(1);
   //   // Approve nftStake to take the token
@@ -185,7 +189,7 @@ export function shouldBehaveLikeNftStake(testData:any): void {
   //   ).toBigInt();
 
   //   const staker = await this.nftStake.connect(this.signers.user1).stakers(this.signers.user1.address);
-    
+
   //   // get the staked receipt
   //   const stakedAtTime = staker.lastCheckpoint.toNumber();
 
@@ -197,7 +201,7 @@ export function shouldBehaveLikeNftStake(testData:any): void {
 
   //   // should have no tokens
   //   expect(balanceBeforeHarvest).to.eq(BigInt(0));
-    
+
   //   // should not let you harvest tokens you did not stake
   //   await expect(this.nftStake.connect(this.signers.user2).harvest(this.signers.user1.address)).to.be.revertedWith(
   //     "Only the staker can harvest",
@@ -235,7 +239,4 @@ export function shouldBehaveLikeNftStake(testData:any): void {
   //   // check that there is now a pending payout availible again
   //   expect(pendingReward).to.be.above(0);
   // });
-
-
-
 }
