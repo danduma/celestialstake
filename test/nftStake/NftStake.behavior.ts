@@ -1,19 +1,8 @@
 import { expect } from "chai";
 import { BigNumber, utils } from "ethers";
 import { network } from "hardhat";
-import {
-  Block,
-  BlockTag,
-  EventType,
-  FeeData,
-  Filter,
-  Log,
-  Listener,
-  Provider,
-  TransactionReceipt,
-  TransactionRequest,
-  TransactionResponse
-} from "@ethersproject/abstract-provider";
+import { Block } from "@ethersproject/abstract-provider";
+import { localComputeYield } from "./test_helpers";
 
 const SECONDS_IN_DAY = 24 * 60 * 60;
 
@@ -28,6 +17,7 @@ export async function getLatestTimestamp(provider:any): Promise<number> {
 
   return (await network.provider.send("eth_getBlockByNumber", ["latest", false])).timestamp;
 }
+
 
 export function shouldBehaveLikeNftStake(): void {
 
@@ -193,11 +183,10 @@ export function shouldBehaveLikeNftStake(): void {
     expect(pendingReward).to.be.above(0);
   });
 
- for (int )
 
   it("staking combinations should yield the expected reward", async function () {
 
-
+    
 
     expect(
       (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toNumber(),
