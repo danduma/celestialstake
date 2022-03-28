@@ -1,3 +1,4 @@
+const fs = require("fs");
 import { boolean } from "hardhat/internal/core/params/argumentTypes";
 
 enum God {
@@ -18,19 +19,19 @@ enum Type {
 
 enum Attributes {
     COSMIC=0,
-    GLOW
+    GLOW=1
   }
 
-let AttributeBits = [1,2];  
+let AttributeBits = [1,2];
 
-interface PieceInfo{
+export interface PieceInfo{
     Type: number;
     God: number;
     Attributes: number;
     Set: number;
 }
 
-interface Rewards{
+export interface Rewards{
     god_reward: Array<number>;
     type_reward: Array<number>;
     single_rewards: Array<number>;
@@ -53,6 +54,12 @@ const couplings = [
     [God.Zeus, God.Poseidon, God.Hades]
 ];
 
+
+export function loadJSON(filename:string){
+    let res = JSON.parse(fs.readFileSync(__dirname + '/' + filename, "utf8"));
+    return res;
+}
+
 /**
 * @dev True if all elements in `gods_list` are greater than 0 in `staked_gods`
 */
@@ -60,7 +67,7 @@ export function godsListMatches(gods_list:Array<number>, staked_gods:Array<numbe
         let matched = true;
 
         for (let j=0; j < gods_list.length; j++) {
-            if (gods_list[j] != 255 && staked_gods[gods_list[j]] <= 0) {
+            if (gods_list[j] != 255 && (staked_gods[gods_list[j]] <= 0 || staked_gods[gods_list[j]] == undefined)) {
                 matched = false;
                 break;
                 }
@@ -78,9 +85,10 @@ export function localComputeYield(stakedNFTs:Array<PieceInfo>, rewards:Rewards):
     // First we list all unique gods and sets and 
     for (let i=0; i < stakedNFTs.length; i++) {
 
-        staked_gods[stakedNFTs[i].God] += 1;
+        staked_gods[stakedNFTs[i].God]? staked_gods[stakedNFTs[i].God] += 1: staked_gods[stakedNFTs[i].God] = 1;
+
         if (stakedNFTs[i].Set != 255) {
-            staked_sets[stakedNFTs[i].Set] += 1;
+            staked_sets[stakedNFTs[i].Set]? staked_sets[stakedNFTs[i].Set] += 1: staked_sets[stakedNFTs[i].Set] = 1;
         }
   
         // Add to the localYield the base reward for each god and type (Curated, Legendary, etc.)

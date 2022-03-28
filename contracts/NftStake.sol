@@ -177,9 +177,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     function stakeNFT(uint256[] calldata tokenIds, PieceInfo[] calldata tokenTraits) public nonReentrant {
-
       require(!depositPaused, "Deposit paused");
-
 
     if (tokenTraits.length > 0) {
         // TODO add Merkle / signature check
@@ -204,7 +202,10 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     for (uint256 i; i < tokenIds.length; i++) {
         require(nftToken.ownerOf(tokenIds[i]) == _msgSender, "Caller is not owner of NFT");
+
+        // console.log("GOT HERE 1");
         nftToken.safeTransferFrom(_msgSender, address(this), tokenIds[i]);
+        // console.log("GOT HERE 2");
 
         ownerOfToken[tokenIds[i]] = _msgSender;
         user.stakedNFTs.push(tokenIds[i]);
@@ -222,14 +223,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     emit NftStaked(_msgSender, tokenIds, block.number);
     }
-
-    /**
-    * @dev Returns how much RELICS is left in the stake contract
-    */
-    function getStakeContractBalance() public view returns (uint256) {
-        return erc20Token.balanceOf(address(this));
-    }
-
 
     /**
     * @dev Moves around elements in a list so we can delete an element
@@ -279,9 +272,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         require(nftToken.ownerOf(tokenIds[i]) == address(this), "Not in staking contract");
 
-        // console.log("Owner should be staking contract");
-        // console.log(nftToken.ownerOf(tokenIds[i]));
-
         delete ownerOfToken[tokenIds[i]];
 
         user.stakedNFTs = _moveTokenInTheList(user.stakedNFTs, tokenIds[i]);
@@ -294,9 +284,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         console.log("Transferring NFT to caller");
         
         nftToken.safeTransferFrom(address(this), _msgSender, tokenIds[i]);
-
-        // console.log("Owner should be caller:");
-        // console.log(nftToken.ownerOf(tokenIds[i]));
       }
 
 
@@ -557,69 +544,3 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
 
 }
-
-
-
-    /**
-    * @dev TODO remove this function
-    */
-    // function _stakeNFT(uint256 tokenId) internal returns (bool) {
-    //     // require this token is not already staked
-
-    //     require(receipt[tokenId].lastCheckpoint == 0, "Stake: Token is already staked");
-
-    //     // require this token is not already owned by this contract
-    //     require(nftToken.ownerOf(tokenId) != address(this), "Stake: Token is already staked in this contract");
-
-    //     // take possession of the NFT
-    //     nftToken.safeTransferFrom(msg.sender, address(this), tokenId);
-
-    //     // check that this contract is the owner
-    //     require(nftToken.ownerOf(tokenId) == address(this), "Stake: Failed to take possession of NFT");
-
-    //     stakers[msg.sender].stakedNFTs.push(tokenId);
-
-    //     // start the staking from this block.
-    //     // receipt[tokenId].tokenId = tokenId;
-    //     // receipt[tokenId].lastCheckpoint = block.timestamp;
-    //     // receipt[tokenId].owner = msg.sender;
-    //     // receipt[tokenId].currentYield = computeYield(msg.sender);
-
-    //     // emit NftStaked(msg.sender, tokenId, block.number);
-
-    //     return true;
-    // }
-
-
-
-    // TODO check if anything useful in here
-
-    // function _unStakeNFT(uint256 tokenId) internal onlyStaker(tokenId) requireTimeElapsed(tokenId) returns (bool) {
-    //     // payout Stake, this should be safe as the function is non-reentrant
-    //     _payoutStake(tokenId);
-
-    //     // delete Stake record, effectively unstaking it
-    //     delete receipt[tokenId];
-
-    //     // return token
-    //     nftToken.safeTransferFrom(address(this), msg.sender, tokenId);
-
-    //     emit NftUnStaked(msg.sender, tokenId, block.number);
-
-    //     return true;
-    // }
-
-
-
-    // modifier onlyStaker(uint256 tokenId) {
-    //     // require that this contract has the NFT
-    //     require(nftToken.ownerOf(tokenId) == address(this), "onlyStaker: Contract is not owner of this NFT");
-
-    //     // require that this token is staked
-    //     require(receipt[tokenId].lastCheckpoint != 0, "onlyStaker: Token is not staked");
-
-    //     // require that msg.sender is the owner of this nft
-    //     require(receipt[tokenId].owner == msg.sender, "onlyStaker: Caller is not NFT stake owner");
-
-    //     _;
-    // }

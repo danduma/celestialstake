@@ -27,7 +27,7 @@
             "name": "hardhat test",
             "skipFiles": ["<node_internals>/**"],
             "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/hardhat",
-            "args": ["coverage", "--network", "hardhat"],
+            "args": ["test", "--network", "hardhat"],
             "cwd": "${workspaceFolder}/"
           }
     ]

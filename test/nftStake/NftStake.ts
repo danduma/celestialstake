@@ -11,10 +11,13 @@ import { Signers } from "../types";
 
 // test cases
 import { shouldBehaveLikeNftStake } from "./NftStake.behavior";
+import { loadJSON, Rewards } from "./test_helpers";
 
 const { deployContract } = hre.waffle;
 
 const DECIMALS = 10 ** 18;
+
+let testData = JSON.parse(fs.readFileSync(__dirname + "/contract_test_data.json", "utf8"));
 
 describe("Unit tests", function () {
   before(async function () {
@@ -24,8 +27,9 @@ describe("Unit tests", function () {
     this.signers.admin = signers[0];
     this.signers.user1 = signers[1];
     this.signers.user2 = signers[2];
-
-    this.testData = JSON.parse(fs.readFileSync(__dirname + "/contract_test_data.json", "utf8"));
+    
+    this.testData = testData;
+    this.rewards = <Rewards> loadJSON('rewards.json');
     
     this.token_data = [this.testData.plain.Artemis]
   });
@@ -65,10 +69,13 @@ describe("Unit tests", function () {
 
       // user1 has tokenId 1
       // user2 has tokenId 2
-      await adminERC721Instance.mint(await this.signers.user1.getAddress(), "First");
-      await adminERC721Instance.mint(await this.signers.user2.getAddress(), "Second");
+      for(let i = 0; i < 10; i++){
+        await adminERC721Instance.mint(await this.signers.user1.getAddress(), "TokenURL " + (i+1));  
+      }
+       
+      await adminERC721Instance.mint(await this.signers.user2.getAddress(), "TokenURL 11");
     });
 
-    shouldBehaveLikeNftStake();
+    shouldBehaveLikeNftStake(testData);
   });
 });
