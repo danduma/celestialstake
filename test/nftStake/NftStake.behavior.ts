@@ -60,14 +60,14 @@ export function shouldBehaveLikeNftStake(testData: any): void {
   let counter = 0;
 
   let testCases = [
-    [testData.plain.Artemis], // single god
+    // [testData.plain.Artemis], // single god
     [testData.cosmic_plating.Hermes], // single god with cosmic plating
-    [testData.glow.Aphrodite], // single god with glowing hair
-    [testData.plain.Athena, testData.plain.Ares], // god pair
-    [testData.plain.Zeus, testData.plain.Poseidon, testData.plain.Hades], // Sky, Sea, Soul
+    // [testData.glow.Aphrodite], // single god with glowing hair
+    // [testData.plain.Athena, testData.plain.Ares], // god pair
+    // [testData.plain.Zeus, testData.plain.Poseidon, testData.plain.Hades], // Sky, Sea, Soul
     testData.set, // Full set
-    [testData.plain.Dionysus, testData.plain.Hera], // Dionysus + 1
-    [testData.plain.Dionysus, testData.plain.Zeus], // Dionysus + 1
+    // [testData.plain.Dionysus, testData.plain.Hera], // Dionysus + 1
+    // [testData.plain.Dionysus, testData.plain.Zeus], // Dionysus + 1
   ];
 
   testCases.forEach(pieces => {

@@ -103,30 +103,18 @@ export function localComputeYield(stakedNFTs: Array<PieceInfo>, rewards: Rewards
     }
 
     // Add to the localYield the base reward for each god and type (Curated, Legendary, etc.)
-    localYield += rewards.god_reward[stakedNFTs[i].God] * DECIMALS;
-    localYield += rewards.type_reward[stakedNFTs[i].Type] * DECIMALS;
+    localYield += rewards.god_reward[stakedNFTs[i].God];
+    localYield += rewards.type_reward[stakedNFTs[i].Type];
 
     // Add to the localYield the reward for each attribute we care about
     for (let attr_counter = 0; attr_counter < AttributeBits.length; attr_counter++) {
       if ((stakedNFTs[i].Attributes & AttributeBits[attr_counter]) > 0) {
-        localYield += rewards.single_rewards[attr_counter] * DECIMALS;
+        localYield += rewards.single_rewards[attr_counter];
       }
     }
   }
 
-  // If we have more than 1 god of a set, add the set reward
-  for (let i = 0; i < staked_sets.length; i++) {
-    if (staked_sets[i] > 0) {
-      localYield += rewards.single_rewards[SingleReward.SAME_SET] * DECIMALS * staked_sets[i];
-    }
-  }
 
-  // Add the god + god combination reward
-  for (let i = 0; i < couplings.length; i++) {
-    if (godsListMatches(couplings[i], staked_gods)) {
-      localYield += rewards.coupling_rewards[i] * DECIMALS;
-    }
-  }
 
   // count the number of gods we have more than 0 of
   let num_gods = 0;
@@ -136,17 +124,35 @@ export function localComputeYield(stakedNFTs: Array<PieceInfo>, rewards: Rewards
       num_gods += 1;
     }
   }
+  
+  // IFF more than 1 god staked, we should check for sets and combinations
+  if (num_gods > 1) {
+      // If we have more than 1 god of a set, add the set reward
+      for (let i = 0; i < staked_sets.length; i++) {
+        if (staked_sets[i] > 0) {
+          localYield += rewards.single_rewards[SingleReward.SAME_SET] * staked_sets[i];
+        }
+      }
+
+    // Add the god + god combination reward
+    for (let i = 0; i < couplings.length; i++) {
+      if (godsListMatches(couplings[i], staked_gods)) {
+        localYield += rewards.coupling_rewards[i];
+      }
+    }
+
+  }
 
   // Dionysus & anyone else
   if (staked_gods[God.Dionysus] > 0 && num_gods > 1) {
-    localYield += rewards.coupling_rewards[11] * DECIMALS;
+    localYield += rewards.coupling_rewards[11];
   }
 
   // Legendary & anyone else
   if (num_gods > 1) {
     for (let i = 0; i < stakedNFTs.length; i++) {
       if (stakedNFTs[i].Type == Type.Legendary) {
-        localYield += rewards.single_rewards[SingleReward.LEGENDARY_SYNERGY] * DECIMALS;
+        localYield += rewards.single_rewards[SingleReward.LEGENDARY_SYNERGY];
         break;
       }
     }
@@ -154,8 +160,8 @@ export function localComputeYield(stakedNFTs: Array<PieceInfo>, rewards: Rewards
 
   // Olympus: full house
   if (num_gods == 12) {
-    localYield += rewards.coupling_rewards[12] * DECIMALS;
+    localYield += rewards.coupling_rewards[12];
   }
 
-  return BigInt(localYield);
+  return BigInt(localYield * DECIMALS);
 }

@@ -364,58 +364,15 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             }
 
             // Add to the yield the base reward for each god and type (Curated, Legendary, etc.)
-            yield += god_reward[pieceInfo[tokenId].God] * DECIMALS;
-            yield += type_reward[pieceInfo[tokenId].Type] * DECIMALS;
+            yield += god_reward[pieceInfo[tokenId].God] ;
+            yield += type_reward[pieceInfo[tokenId].Type];
 
             // Add to the yield the reward for each attribute we care about
             for (uint8 attr_counter = 0; attr_counter < AttributeBits.length; attr_counter++) {
                 if ((pieceInfo[tokenId].Attributes & AttributeBits[attr_counter]) > 0) {
-                    yield += single_rewards[attr_counter] * DECIMALS;
+                    yield += single_rewards[attr_counter];
                 }
             }
-        }
-
-        // If we have more than 1 god of a set, add the set reward
-        for (uint256 i; i < staked_sets.length; i++) {
-            if (staked_sets[i] > 0) {
-                yield += single_rewards[uint256(SingleReward.SAME_SET)] * DECIMALS * staked_sets[i];
-            }
-        }
-
-        // Add the god + god combination reward
-        for (uint256 i; i < couplings.length; i++) {
-            // this is fucking retarded, but Solidity won't let you cast a static array
-            // to a dynamic array
-            uint256[] memory gods_list = new uint256[](couplings[i].length);
-            for (uint256 j; j < couplings[i].length; j++) {
-                gods_list[j] = couplings[i][j];
-            }
-
-            if (godsListMatches(gods_list, staked_gods)) {
-                yield += coupling_rewards[i] * DECIMALS;
-            }
-        }
-
-        // Next part of the function is made a second function because the EVM is stupid
-        yield += computeCouplingsYield(staked_gods, _staker);
-
-        return yield;
-    }
-
-    /**
-     * @dev Splintered from computeYield() to get around code complexity issues
-     */
-    function computeCouplingsYield(uint256[12] memory staked_gods, address _staker) public view returns (uint256) {
-        uint256 yield = 0;
-
-        // sky, sea and soul. Only coupling of 3
-        uint256[] memory gods_list3 = new uint256[](3);
-        gods_list3[0] = uint256(God.Zeus);
-        gods_list3[1] = uint256(God.Poseidon);
-        gods_list3[2] = uint256(God.Hades);
-
-        if (godsListMatches(gods_list3, staked_gods)) {
-            yield += coupling_rewards[10] * DECIMALS;
         }
 
         // count the number of gods we have more than 0 of
@@ -427,9 +384,56 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             }
         }
 
+        // IFF more than 1 god staked, we should check for sets and combinations
+        if (num_gods > 1){
+
+            // If we have more than 1 god of a set, add the set reward
+            for (uint256 i; i < staked_sets.length; i++) {
+                if (staked_sets[i] > 0) {
+                    yield += single_rewards[uint256(SingleReward.SAME_SET)] * staked_sets[i];
+                }
+            }
+
+            // Add the god + god combination reward
+            for (uint256 i; i < couplings.length; i++) {
+                // this is fucking retarded, but Solidity won't let you cast a static array
+                // to a dynamic array
+                uint256[] memory gods_list = new uint256[](couplings[i].length);
+                for (uint256 j; j < couplings[i].length; j++) {
+                    gods_list[j] = couplings[i][j];
+                }
+
+                if (godsListMatches(gods_list, staked_gods)) {
+                    yield += coupling_rewards[i];
+                }
+            }
+        }
+
+        // Next part of the function is made a second function because the EVM implementation is retarded
+        yield += computeCouplingsYield(staked_gods, _staker, num_gods);
+
+        return yield * DECIMALS;
+    }
+
+    /**
+     * @dev Splintered from computeYield() to get around code complexity issues
+     */
+    function computeCouplingsYield(uint256[12] memory staked_gods, address _staker, uint256 num_gods) public view returns (uint256) {
+        uint256 yield = 0;
+
+        // sky, sea and soul. Only coupling of 3
+        uint256[] memory gods_list3 = new uint256[](3);
+        gods_list3[0] = uint256(God.Zeus);
+        gods_list3[1] = uint256(God.Poseidon);
+        gods_list3[2] = uint256(God.Hades);
+
+        if (godsListMatches(gods_list3, staked_gods)) {
+            yield += coupling_rewards[10];
+        }
+
         // Dionysus & anyone else
         if (staked_gods[uint256(God.Dionysus)] > 0 && num_gods > 1) {
-            yield += coupling_rewards[11] * DECIMALS;
+            yield += coupling_rewards[11];
         }
 
         // Legendary & anyone else
@@ -438,7 +442,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
                 uint256 tokenId = stakers[_staker].stakedNFTs[i];
 
                 if (pieceInfo[tokenId].Type == uint8(Type.Legendary)) {
-                    yield += single_rewards[uint256(SingleReward.LEGENDARY_SYNERGY)] * DECIMALS;
+                    yield += single_rewards[uint256(SingleReward.LEGENDARY_SYNERGY)];
                     break;
                 }
             }
@@ -446,7 +450,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         // Olympus: full house
         if (num_gods == 12) {
-            yield += coupling_rewards[12] * DECIMALS;
+            yield += coupling_rewards[12];
         }
 
         return yield;
