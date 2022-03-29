@@ -14,6 +14,7 @@ export async function getLatestTimestamp(provider: any): Promise<number> {
   return (await network.provider.send("eth_getBlockByNumber", ["latest", false])).timestamp;
 }
 
+// Helper function to compare the locally computed yield to the contract yield
 export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
   let localYield = <BigInt>localComputeYield(pieces, this1.rewards);
 
@@ -34,24 +35,28 @@ export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
   // let some time pass
   await network.provider.send("evm_mine");
 
-  let final_time = await getLatestTimestamp(network.provider);
-
-  let localReward = BigInt(Math.round((final_time - initial_time) * (Number(localYield) / 1000000 / SECONDS_IN_DAY)));
+  let contractYield =
+    (await this1.nftStake.connect(this1.signers.user1).computeYield(this1.signers.user1.address)).toBigInt();
 
   let contractReward =
     (await this1.nftStake.connect(this1.signers.user1).getPendingReward(this1.signers.user1.address)).toBigInt() /
     BigInt(1000000);
 
-  let diff = Math.abs(Number(contractReward - localReward));
+  let final_time = await getLatestTimestamp(network.provider);
 
-  // if (contractReward != localReward){
-  // if (diff > 2) {
-  //   console.log("contractReward != localReward");
-  //   console.log(contractReward);
-  //   console.log(localReward);
+  let localReward = BigInt(Math.round((final_time - initial_time) * (Number(localYield) / 1000000 / SECONDS_IN_DAY)));
+
+  let rewardDiff = Math.abs(Number(contractReward - localReward));
+  let yieldDiff = Math.abs(Number(Number(contractYield) - Number(localYield)));
+
+  // if (yieldDiff > 2) {
+  //   console.log("localYield != contractYield");
+  //   console.log(localYield);
+  //   console.log(contractYield);
   // }
 
-  expect(diff).to.be.lessThan(2);
+  expect(yieldDiff).to.be.lessThan(2);
+  expect(rewardDiff).to.be.lessThan(2);
 
   await network.provider.send("evm_mine");
 }
@@ -60,14 +65,14 @@ export function shouldBehaveLikeNftStake(testData: any): void {
   let counter = 0;
 
   let testCases = [
-    // [testData.plain.Artemis], // single god
+    [testData.plain.Artemis], // single god
     [testData.cosmic_plating.Hermes], // single god with cosmic plating
-    // [testData.glow.Aphrodite], // single god with glowing hair
-    // [testData.plain.Athena, testData.plain.Ares], // god pair
-    // [testData.plain.Zeus, testData.plain.Poseidon, testData.plain.Hades], // Sky, Sea, Soul
+    [testData.glow.Aphrodite], // single god with glowing hair
+    [testData.plain.Athena, testData.plain.Ares], // god pair
+    [testData.plain.Zeus, testData.plain.Poseidon, testData.plain.Hades], // Sky, Sea, Soul
     testData.set, // Full set
-    // [testData.plain.Dionysus, testData.plain.Hera], // Dionysus + 1
-    // [testData.plain.Dionysus, testData.plain.Zeus], // Dionysus + 1
+    [testData.plain.Dionysus, testData.plain.Hera], // Dionysus + 1
+    [testData.plain.Dionysus, testData.plain.Zeus], // Dionysus + 1
   ];
 
   testCases.forEach(pieces => {

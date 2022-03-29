@@ -105,7 +105,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         1000
     ];
 
-    uint256[2][13] public couplings = [
+    uint256[2][10] public couplings = [
         [uint256(God.Zeus), uint256(God.Hera)],
         [uint256(God.Artemis), uint256(God.Apollo)],
         [uint256(God.Artemis), uint256(God.Hermes)],
@@ -364,18 +364,21 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             }
 
             // Add to the yield the base reward for each god and type (Curated, Legendary, etc.)
-            yield += god_reward[pieceInfo[tokenId].God] ;
+            yield += god_reward[pieceInfo[tokenId].God];
             yield += type_reward[pieceInfo[tokenId].Type];
 
             // Add to the yield the reward for each attribute we care about
             for (uint8 attr_counter = 0; attr_counter < AttributeBits.length; attr_counter++) {
                 if ((pieceInfo[tokenId].Attributes & AttributeBits[attr_counter]) > 0) {
+                    
+                    console.log("ADDING ATTRIBUTE REWARD", attr_counter, AttributeBits[attr_counter], single_rewards[attr_counter]);
+                    
                     yield += single_rewards[attr_counter];
                 }
             }
         }
 
-        // count the number of gods we have more than 0 of
+        // count the number of unique gods we have more than 0 of
         uint256 num_gods = 0;
 
         for (uint256 i; i < staked_gods.length; i++) {
@@ -384,27 +387,14 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             }
         }
 
-        // IFF more than 1 god staked, we should check for sets and combinations
-        if (num_gods > 1){
-
+        // IFF more than 1 god staked, we should check for sets 
+        if (num_gods > 0){
             // If we have more than 1 god of a set, add the set reward
             for (uint256 i; i < staked_sets.length; i++) {
                 if (staked_sets[i] > 0) {
+                    console.log("ADDING SET REWARD", i, staked_sets[i]);
+                    console.log(single_rewards[uint256(SingleReward.SAME_SET)]);
                     yield += single_rewards[uint256(SingleReward.SAME_SET)] * staked_sets[i];
-                }
-            }
-
-            // Add the god + god combination reward
-            for (uint256 i; i < couplings.length; i++) {
-                // this is fucking retarded, but Solidity won't let you cast a static array
-                // to a dynamic array
-                uint256[] memory gods_list = new uint256[](couplings[i].length);
-                for (uint256 j; j < couplings[i].length; j++) {
-                    gods_list[j] = couplings[i][j];
-                }
-
-                if (godsListMatches(gods_list, staked_gods)) {
-                    yield += coupling_rewards[i];
                 }
             }
         }
@@ -420,38 +410,72 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
      */
     function computeCouplingsYield(uint256[12] memory staked_gods, address _staker, uint256 num_gods) public view returns (uint256) {
         uint256 yield = 0;
+        
+        // TODO CHANGE BACK TO 1
+        if (num_gods > 0) {
+            console.log("");
+            console.log("couplings.length", couplings.length);
+            // Add the god + god combination reward
+            for (uint256 i; i < couplings.length; i++) {
+                // this is fucking retarded, but Solidity won't let you cast a static array
+                // to a dynamic array
+                uint256[] memory gods_list = new uint256[](couplings[i].length);
+                for (uint256 j; j < couplings[i].length; j++) {
+                    gods_list[j] = couplings[i][j];
+                }
 
-        // sky, sea and soul. Only coupling of 3
-        uint256[] memory gods_list3 = new uint256[](3);
-        gods_list3[0] = uint256(God.Zeus);
-        gods_list3[1] = uint256(God.Poseidon);
-        gods_list3[2] = uint256(God.Hades);
+                if (godsListMatches(gods_list, staked_gods)) {
+                    console.log("ADDING COUPLING REWARD", i);
+                    console.log(coupling_rewards[i]);
 
-        if (godsListMatches(gods_list3, staked_gods)) {
-            yield += coupling_rewards[10];
-        }
+                    yield += coupling_rewards[i];
+                }
+            }
 
-        // Dionysus & anyone else
-        if (staked_gods[uint256(God.Dionysus)] > 0 && num_gods > 1) {
-            yield += coupling_rewards[11];
-        }
+            // sky, sea and soul. Only "coupling" of 3
+            uint256[] memory gods_list3 = new uint256[](3);
+            gods_list3[0] = uint256(God.Zeus);
+            gods_list3[1] = uint256(God.Poseidon);
+            gods_list3[2] = uint256(God.Hades);
 
-        // Legendary & anyone else
-        if (num_gods > 1) {
+            if (godsListMatches(gods_list3, staked_gods)) {
+                console.log("ADDING 3-COUPLING REWARD");
+                console.log(coupling_rewards[10]);
+
+                yield += coupling_rewards[10];
+            }
+
+            // Dionysus & anyone else
+            if (staked_gods[uint256(God.Dionysus)] > 0 && num_gods > 1) {
+                console.log("ADDING COUPLING REWARD: Dionysus");
+                console.log(coupling_rewards[11]);
+
+                yield += coupling_rewards[11];
+            }
+
+            // Legendary & anyone else
             for (uint256 i; i < stakers[_staker].stakedNFTs.length; i++) {
                 uint256 tokenId = stakers[_staker].stakedNFTs[i];
 
                 if (pieceInfo[tokenId].Type == uint8(Type.Legendary)) {
+                    console.log("ADDING COUPLING REWARD: Legendary");
+                    console.log(coupling_rewards[11]);
+
                     yield += single_rewards[uint256(SingleReward.LEGENDARY_SYNERGY)];
                     break;
                 }
             }
+
+            // Olympus: full house
+            if (num_gods == 12) {
+                console.log("ADDING COUPLING REWARD: Olympus");
+                console.log(coupling_rewards[12]);
+
+                yield += coupling_rewards[12];
+        }
         }
 
-        // Olympus: full house
-        if (num_gods == 12) {
-            yield += coupling_rewards[12];
-        }
+
 
         return yield;
     }
@@ -555,14 +579,15 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
      * @dev True if all elements in `gods_list` are greater than 0 in `staked_gods`
      */
     function godsListMatches(uint256[] memory gods_list, uint256[12] memory staked_gods) internal pure returns (bool) {
-        bool matched = true;
+        if (gods_list.length == 0){
+            return false;
+        }
 
         for (uint256 j; j < gods_list.length; j++) {
-            if (gods_list[j] != 255 && staked_gods[gods_list[j]] <= 0) {
-                matched = false;
-                break;
+            if (gods_list[j] != 255 && (staked_gods[gods_list[j]] == 0)) {
+                return false;
             }
         }
-        return matched;
+        return true;
     }
 }
