@@ -579,7 +579,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
      * @dev True if all elements in `gods_list` are greater than 0 in `staked_gods`
      */
     function godsListMatches(uint256[] memory gods_list, uint256[12] memory staked_gods) internal pure returns (bool) {
-        if (gods_list.length == 0){
+        if (gods_list.length == 0 || staked_gods.length == 0) {
             return false;
         }
 
