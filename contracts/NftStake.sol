@@ -193,8 +193,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     function accumulate(address staker) internal {
         stakers[staker].accumulatedAmount += getPendingReward(staker);
         stakers[staker].lastCheckpoint = block.timestamp;
-        // console.log("stakers[staker].accumulatedAmount");
-        // console.log(stakers[staker].accumulatedAmount );
     }
 
     function _setTokensValues(uint256[] memory tokenIds, PieceInfo[] memory tokenTraits) internal {
@@ -224,25 +222,14 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         Staker storage user = stakers[_msgSender];
 
-        // console.log("User.stakedNFTs [before loop]");
-        // for (uint256 i; i < user.stakedNFTs.length; i++) {
-        //     console.logUint(user.stakedNFTs[i]);
-        // }
-
         for (uint256 i; i < tokenIds.length; i++) {
             require(nftToken.ownerOf(tokenIds[i]) == _msgSender, "Caller is not owner of NFT");
 
-            // console.log("GOT HERE 1");
             nftToken.safeTransferFrom(_msgSender, address(this), tokenIds[i]);
-            // console.log("GOT HERE 2");
 
             ownerOfToken[tokenIds[i]] = _msgSender;
             user.stakedNFTs.push(tokenIds[i]);
 
-            // console.log("User.stakedNFTs [inside loop]");
-            // for (uint256 i; i < user.stakedNFTs.length; i++) {
-            //     console.logUint(user.stakedNFTs[i]);
-            // }
         }
 
         accumulate(_msgSender);
@@ -307,7 +294,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
                 newYield = computeYield(_msgSender);
             }
 
-            console.log("Transferring NFT to caller");
+            // console.log("Transferring NFT to caller");
 
             nftToken.safeTransferFrom(address(this), _msgSender, tokenIds[i]);
         }
@@ -371,7 +358,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             for (uint8 attr_counter = 0; attr_counter < AttributeBits.length; attr_counter++) {
                 if ((pieceInfo[tokenId].Attributes & AttributeBits[attr_counter]) > 0) {
                     
-                    console.log("ADDING ATTRIBUTE REWARD", attr_counter, AttributeBits[attr_counter], single_rewards[attr_counter]);
+                    // console.log("ADDING ATTRIBUTE REWARD", attr_counter, AttributeBits[attr_counter], single_rewards[attr_counter]);
                     
                     yield += single_rewards[attr_counter];
                 }
@@ -388,12 +375,12 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         }
 
         // IFF more than 1 god staked, we should check for sets 
-        if (num_gods > 0){
+        if (num_gods > 1){
             // If we have more than 1 god of a set, add the set reward
             for (uint256 i; i < staked_sets.length; i++) {
                 if (staked_sets[i] > 0) {
-                    console.log("ADDING SET REWARD", i, staked_sets[i]);
-                    console.log(single_rewards[uint256(SingleReward.SAME_SET)]);
+                    // console.log("ADDING SET REWARD", i, staked_sets[i]);
+                    // console.log(single_rewards[uint256(SingleReward.SAME_SET)]);
                     yield += single_rewards[uint256(SingleReward.SAME_SET)] * staked_sets[i];
                 }
             }
@@ -411,10 +398,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     function computeCouplingsYield(uint256[12] memory staked_gods, address _staker, uint256 num_gods) public view returns (uint256) {
         uint256 yield = 0;
         
-        // TODO CHANGE BACK TO 1
-        if (num_gods > 0) {
-            console.log("");
-            console.log("couplings.length", couplings.length);
+        if (num_gods > 1) {
             // Add the god + god combination reward
             for (uint256 i; i < couplings.length; i++) {
                 // this is fucking retarded, but Solidity won't let you cast a static array
@@ -425,8 +409,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
                 }
 
                 if (godsListMatches(gods_list, staked_gods)) {
-                    console.log("ADDING COUPLING REWARD", i);
-                    console.log(coupling_rewards[i]);
+                    // console.log("ADDING COUPLING REWARD", i);
+                    // console.log(coupling_rewards[i]);
 
                     yield += coupling_rewards[i];
                 }
@@ -439,16 +423,16 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             gods_list3[2] = uint256(God.Hades);
 
             if (godsListMatches(gods_list3, staked_gods)) {
-                console.log("ADDING 3-COUPLING REWARD");
-                console.log(coupling_rewards[10]);
+                // console.log("ADDING 3-COUPLING REWARD");
+                // console.log(coupling_rewards[10]);
 
                 yield += coupling_rewards[10];
             }
 
             // Dionysus & anyone else
             if (staked_gods[uint256(God.Dionysus)] > 0 && num_gods > 1) {
-                console.log("ADDING COUPLING REWARD: Dionysus");
-                console.log(coupling_rewards[11]);
+                // console.log("ADDING COUPLING REWARD: Dionysus");
+                // console.log(coupling_rewards[11]);
 
                 yield += coupling_rewards[11];
             }
@@ -458,8 +442,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
                 uint256 tokenId = stakers[_staker].stakedNFTs[i];
 
                 if (pieceInfo[tokenId].Type == uint8(Type.Legendary)) {
-                    console.log("ADDING COUPLING REWARD: Legendary");
-                    console.log(coupling_rewards[11]);
+                    // console.log("ADDING COUPLING REWARD: Legendary");
+                    // console.log(coupling_rewards[11]);
 
                     yield += single_rewards[uint256(SingleReward.LEGENDARY_SYNERGY)];
                     break;
@@ -468,8 +452,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
             // Olympus: full house
             if (num_gods == 12) {
-                console.log("ADDING COUPLING REWARD: Olympus");
-                console.log(coupling_rewards[12]);
+                // console.log("ADDING COUPLING REWARD: Olympus");
+                // console.log(coupling_rewards[12]);
 
                 yield += coupling_rewards[12];
         }
@@ -508,7 +492,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         // If contract does not have enough tokens to pay out, return the NFT without payment
         // This prevent a NFT being locked in the contract when empty
         if (erc20Token.balanceOf(address(this)) < payout) {
-            console.log("Not enough tokens to pay out (!!)");
+            // console.log("Not enough tokens to pay out (!!)");
             emit StakePayout(msg.sender, user.stakedNFTs, 0, user.lastCheckpoint, block.timestamp);
             return;
         }
