@@ -299,8 +299,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
                 newYield = computeYield(_msgSender);
             }
 
-            // console.log("Transferring NFT to caller");
-
             nftToken.safeTransferFrom(address(this), _msgSender, tokenIds[i]);
         }
 
@@ -590,10 +588,10 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         bytes memory packed = abi.encodePacked(index, item.Type, item.God, item.Attributes, item.Set);
         bytes32 computedHash = keccak256(packed);
 
-        console.logBytes(" === validating proof ===");
-        console.logBytes(packed);
-        console.log(" ");
-        console.logBytes32(computedHash);
+        // console.logBytes(" === validating proof ===");
+        // console.logBytes(packed);
+        // console.log(" ");
+        // console.logBytes32(computedHash);
 
         return MerkleProof.verify(proof, attributesRoot, computedHash);
   }

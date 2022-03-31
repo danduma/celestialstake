@@ -184,10 +184,7 @@ export async function generateMerkleTree(stakedNFTs: Array<PieceInfo>, contract:
       [index + offset, item.Type, item.God, item.Attributes, item.Set],
     );
 
-    console.log("PACKED",packed);
-
     let hashed = keccak256(packed);
-
     return hashed;
   });
 
@@ -200,8 +197,6 @@ export async function generateMerkleTree(stakedNFTs: Array<PieceInfo>, contract:
   const hexroot = tree.getHexRoot();
   const leaf = leaves[index];
   const hexproof = tree.getHexProof(leaf!);
-
-  console.log("leaf", leaf);
 
   // console.log("verifying with merkletreejs:");
   // console.log(tree.verify(hexproof, leaf!, hexroot)); // true

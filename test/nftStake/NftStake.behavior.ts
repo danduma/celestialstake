@@ -49,12 +49,6 @@ export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
   let rewardDiff = Math.abs(Number(contractReward - localReward));
   let yieldDiff = Math.abs(Number(Number(contractYield) - Number(localYield)));
 
-  // if (yieldDiff > 2) {
-  //   console.log("localYield != contractYield");
-  //   console.log(localYield);
-  //   console.log(contractYield);
-  // }
-
   expect(yieldDiff).to.be.lessThan(2);
   expect(rewardDiff).to.be.lessThan(2);
 
@@ -216,11 +210,6 @@ export function shouldBehaveLikeNftStake(testData: any): void {
     await network.provider.send("evm_mine");
     await network.provider.send("evm_mine");
 
-    // get current earned stake
-    const currentEarnedStake = (
-      await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)
-    ).toBigInt();
-
     // get current token balance of user
     const balanceBeforeHarvest = (
       await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())
@@ -245,26 +234,34 @@ export function shouldBehaveLikeNftStake(testData: any): void {
       "Only the staker can harvest",
     );
 
+    // get current earned stake
+    const currentPendingReward = (
+      await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)
+    ).toBigInt();
+
+    const currentEarnedStake:BigInt = currentPendingReward + (await this.nftStake.stakers(this.signers.user1.address)).accumulatedAmount.toBigInt();
+
     // harvest Stake
     await this.nftStake.connect(this.signers.user1).harvest(this.signers.user1.address);
 
     // should have harvested the tokens
-    expect(
-      (await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())).toBigInt(),
-    ).to.eq(currentEarnedStake);
+    let balanceAfterHarvest = (await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())).toNumber();
+
+    expect(balanceAfterHarvest).to.be.greaterThanOrEqual(parseInt(currentEarnedStake.toString()));
 
     // check the new receipt
     const updatedStakeDate = (
       await this.nftStake.connect(this.signers.user1).stakers(this.signers.user1.address)
     ).lastCheckpoint.toBigInt();
 
+    let latestTimestamp = await getLatestTimestamp(network.provider);
     // check the staked receipt has been updated to current blocktime
-    expect((await getLatestTimestamp(network.provider))).to.eq(updatedStakeDate);
+    expect(parseInt(latestTimestamp.toString())).to.eq(parseInt(updatedStakeDate.toString()));
 
     // check that there is no pending payout availible
     expect(
       (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt(),
-    ).to.eq(0);
+    ).to.eq(BigInt(0));
 
     // check that nftStake still owns the token
     expect(await this.nftToken.connect(this.signers.user1).ownerOf(tokenId)).to.eq(this.nftStake.address);
@@ -275,6 +272,6 @@ export function shouldBehaveLikeNftStake(testData: any): void {
     let pendingReward = (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt();
 
     // check that there is now a pending payout availible again
-    expect(pendingReward).to.be.above(0);
+    expect(parseInt(pendingReward.toString())).to.be.above(0);
   });
 }
