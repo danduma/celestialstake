@@ -12,6 +12,7 @@ import { Signers } from "../types";
 // test cases
 import { shouldBehaveLikeNftStake } from "./NftStake.behavior";
 import { loadJSON, Rewards } from "./test_helpers";
+import { ethers } from "ethers";
 
 const { deployContract } = hre.waffle;
 
@@ -52,6 +53,7 @@ describe("Unit tests", function () {
         await deployContract(this.signers.admin, nftStakeArtifact, [
           this.nftToken.address,
           this.erc20Token.address,
+          ethers.utils.hexZeroPad("0x00", 32),
           await this.signers.admin.getAddress(),
         ])
       );

@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { BigNumber, utils } from "ethers";
+import { BigNumber } from "ethers";
 import { network } from "hardhat";
 import { Block } from "@ethersproject/abstract-provider";
-import { localComputeYield, PieceInfo } from "./test_helpers";
+import { generateMerkleTree, localComputeYield, PieceInfo } from "./test_helpers";
 
 const SECONDS_IN_DAY = 24 * 60 * 60;
 
@@ -61,8 +61,15 @@ export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
   await network.provider.send("evm_mine");
 }
 
+export async function setUpMerkleTree(nfts: Array<PieceInfo>, this1:any, offset:number=1): Promise<any> {
+  let tree = await generateMerkleTree(nfts, this1.nftStake, 1);
+    
+  await this1.nftStake.connect(this1.signers.user1).setAttributesRoot(tree.root);
+  return tree;
+}
+
 export function shouldBehaveLikeNftStake(testData: any): void {
-  let counter = 0;
+//   let counter = 0;
 
   let testCases = [
     [testData.plain.Artemis], // single god
@@ -75,173 +82,199 @@ export function shouldBehaveLikeNftStake(testData: any): void {
     [testData.plain.Dionysus, testData.plain.Zeus], // Dionysus + 1
   ];
 
-  testCases.forEach(pieces => {
-    it("staking combinations should yield the expected reward: " + (counter + 1), async function () {
-      // let pieces = [this.testData.plain.Artemis];
-      await checkYieldMatches(this, pieces);
-    });
+//   testCases.forEach(pieces => {
+//     it("staking combinations should yield the expected reward: " + (counter + 1), async function () {
+//       // let pieces = [this.testData.plain.Artemis];
+//       await checkYieldMatches(this, pieces);
+//     });
 
-    counter += 1;
+//     counter += 1;
+//   });
+
+it("should compute Merkle proofs", async function () {
+
+  let tree = await generateMerkleTree(testCases[5], this.nftStake);
+  console.log(tree.root);
+  console.log(tree.leaves);
+});
+
+  it("should let user stake NFT", async function () {
+    let nfts = [this.token_data[0]];
+    let tokenIds = [BigNumber.from(1)];
+    let tree = await setUpMerkleTree(nfts, this);
+
+    // Need to approve the token first
+    await expect(
+      this.nftStake.connect(this.signers.user1).stakeNFT(tokenIds, nfts, tree.leaves),
+    ).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
+    // Approve nftStake to take the token
+    await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, BigNumber.from(1));
+    // Try to stake it
+    await expect(this.nftStake.connect(this.signers.user1).stakeNFT(tokenIds, nfts, tree.leaves)).to.not
+      .be.reverted;
   });
 
-  // it("should let user stake NFT", async function () {
-  //   // Need to approve the token first
-  //   await expect(
-  //     this.nftStake.connect(this.signers.user1).stakeNFT([BigNumber.from(1)], [this.token_data[0]]),
-  //   ).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
-  //   // Approve nftStake to take the token
-  //   await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, BigNumber.from(1));
-  //   // Try to stake it
-  //   await expect(this.nftStake.connect(this.signers.user1).stakeNFT([BigNumber.from(1)], [this.token_data[0]])).to.not
-  //     .be.reverted;
-  // });
+  it("should not let a user stake twice", async function () {
+    let nfts = [this.token_data[0]];
+    let tokenIds = [BigNumber.from(1)];
+    let tree = await setUpMerkleTree(nfts, this);
 
-  // it("should not let a user stake twice", async function () {
-  //   // Approve nftStake to take the token
-  //   await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, BigNumber.from(1));
+    // Approve nftStake to take the token
+    await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, BigNumber.from(1));
 
-  //   // Try to stake it
-  //   await expect(this.nftStake.connect(this.signers.user1).stakeNFT(
-  //     [BigNumber.from(1)], [this.token_data[0]])).to.not.be.reverted;
+    // Try to stake it
+    await expect(this.nftStake.connect(this.signers.user1).stakeNFT(tokenIds, nfts, tree.leaves)).to.not.be.reverted;
 
-  //   // Try to stake again
-  //   await expect(
-  //     this.nftStake.connect(this.signers.user1).stakeNFT([BigNumber.from(1)], [this.token_data[0]]),
-  //   ).to.be.revertedWith("Caller is not owner of NFT");
-  // });
+    // Try to stake again
+    await expect(
+      this.nftStake.connect(this.signers.user1).stakeNFT(tokenIds, nfts, tree.leaves),
+    ).to.be.revertedWith("Caller is not owner of NFT");
+  });
 
-  // it("should not let you stake a token you don't own", async function () {
-  //   // Try to stake it
-  //   await expect(this.nftStake.connect(this.signers.user2).stakeNFT([BigNumber.from(1)], [this.token_data[0]])).to.be
-  //     .reverted;
-  // });
+  it("should not let you stake a token you don't own", async function () {
+    let nfts = [this.token_data[0]];
+    let tokenIds = [BigNumber.from(1)];
+    let tree = await setUpMerkleTree(nfts, this);
 
-  // it("should let user unstake and pay the right yield", async function () {
-  //   const tokenId = BigNumber.from(1);
-  //   // Approve nftStake to take the token
-  //   await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, tokenId);
-  //   // Try to stake it
-  //   await expect(this.nftStake.connect(this.signers.user1).stakeNFT([tokenId], [this.token_data[0]])).to.not.be.reverted;
+    // Try to stake it
+    await expect(this.nftStake.connect(this.signers.user2).stakeNFT(tokenIds, nfts, tree.leaves)).to.be
+      .reverted;
+  });
 
-  //   // confirm nftStake owns token
-  //   expect(await this.nftToken.connect(this.signers.admin).ownerOf(tokenId)).to.eql(this.nftStake.address);
+  it("should let user unstake and pay the right yield", async function () {
+    let nfts = [this.token_data[0]];
+    let tokenId = 1;
+    let tokenIds = [BigNumber.from(tokenId)];
+    let tree = await setUpMerkleTree(nfts, this);
+    
+    // Approve nftStake to take the token
+    await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, tokenIds[0]);
+    // Try to stake it
+    await expect(this.nftStake.connect(this.signers.user1).stakeNFT(tokenIds, nfts, tree.leaves)).to.not.be.reverted;
 
-  //   // let some time pass
-  //   await network.provider.send("evm_mine");
+    // confirm nftStake owns token
+    expect(await this.nftToken.connect(this.signers.admin).ownerOf(tokenId)).to.eql(this.nftStake.address);
 
-  //   // get lastCheckpoint in seconds
-  //   const startStake = (
-  //     await this.nftStake.connect(this.signers.admin).stakers(this.signers.user1.address)
-  //   ).lastCheckpoint.toNumber();
+    // let some time pass
+    await network.provider.send("evm_mine");
 
-  //   const timeDelta = (await getLatestTimestamp(network.provider)) - startStake;
-  //   const computedYield = (await this.nftStake.connect(this.signers.user1).computeYield(this.signers.user1.address)).toBigInt() / BigInt(SECONDS_IN_DAY);
+    // get lastCheckpoint in seconds
+    const startStake = (
+      await this.nftStake.connect(this.signers.admin).stakers(this.signers.user1.address)
+    ).lastCheckpoint.toNumber();
 
-  //   // estimate stake
-  //   const estimatedPayout = BigInt(timeDelta) * computedYield;
+    const timeDelta = (await getLatestTimestamp(network.provider)) - startStake;
+    const computedYield = (await this.nftStake.connect(this.signers.user1).computeYield(this.signers.user1.address)).toBigInt() / BigInt(SECONDS_IN_DAY);
 
-  //   let result = await (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt();
+    // estimate stake
+    const estimatedPayout = BigInt(timeDelta) * computedYield;
 
-  //   // check if estimated stake matches contract
-  //   expect(result).to.eql(estimatedPayout);
+    let result = await (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt();
 
-  //   let pendingReward = (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt();
+    // check if estimated stake matches contract
+    expect(result).to.eql(estimatedPayout);
 
-  //   // try to unstake
-  //   await expect(this.nftStake.connect(this.signers.user1).unStakeNFT([tokenId])).to.not.be.reverted;
+    let pendingReward = (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt();
 
-  //   // confirm user1 owns the token again
-  //   expect(await this.nftToken.connect(this.signers.user1).ownerOf(tokenId)).to.eql(
-  //     await this.signers.user1.getAddress(),
-  //   );
+    // try to unstake
+    await expect(this.nftStake.connect(this.signers.user1).unStakeNFT([tokenId])).to.not.be.reverted;
 
-  //   // check if user1 has been paid the estimated stake
-  //   expect(
-  //     await (
-  //       await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())
-  //     ).toBigInt(),
-  //   ).satisfies( (value:BigInt) => {
-  //     return (value == pendingReward) || (value == (pendingReward * BigInt(2)))} );
-  // });
+    // confirm user1 owns the token again
+    expect(await this.nftToken.connect(this.signers.user1).ownerOf(tokenId)).to.eql(
+      await this.signers.user1.getAddress(),
+    );
 
-  // it("getPendingReward should return zero when not staked", async function () {
-  //   expect(
-  //     (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toNumber(),
-  //   ).to.eql(0);
-  // });
+    // check if user1 has been paid the estimated stake
+    expect(
+      await (
+        await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())
+      ).toBigInt(),
+    ).satisfies( (value:BigInt) => {
+      return (value == pendingReward) || (value == (pendingReward * BigInt(2)))} );
+  });
 
-  // it("should allow harvesting without withdrawal", async function () {
-  //   const tokenId = BigNumber.from(1);
-  //   // Approve nftStake to take the token
-  //   await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, tokenId);
-  //   // Try to stake it
-  //   await expect(this.nftStake.connect(this.signers.user1).stakeNFT([tokenId], [this.token_data[0]])).to.not.be.reverted;
+  it("getPendingReward should return zero when not staked", async function () {
+    expect(
+      (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toNumber(),
+    ).to.eql(0);
+  });
 
-  //   // Wait 4 blocks
-  //   await network.provider.send("evm_mine");
-  //   await network.provider.send("evm_mine");
-  //   await network.provider.send("evm_mine");
-  //   await network.provider.send("evm_mine");
+  it("should allow harvesting without withdrawal", async function () {
+    let nfts = [this.token_data[0]];
+    let tokenId = 1; 
+    let tokenIds = [BigNumber.from(tokenId)];
+    let tree = await setUpMerkleTree(nfts, this);
+    
+    // Approve nftStake to take the token
+    await this.nftToken.connect(this.signers.user1).approve(this.nftStake.address, tokenId);
+    // Try to stake it
+    await expect(this.nftStake.connect(this.signers.user1).stakeNFT(tokenIds, nfts, tree.leaves)).to.not.be.reverted;
 
-  //   // get current earned stake
-  //   const currentEarnedStake = (
-  //     await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)
-  //   ).toBigInt();
+    // Wait 4 blocks
+    await network.provider.send("evm_mine");
+    await network.provider.send("evm_mine");
+    await network.provider.send("evm_mine");
+    await network.provider.send("evm_mine");
 
-  //   // get current token balance of user
-  //   const balanceBeforeHarvest = (
-  //     await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())
-  //   ).toBigInt();
+    // get current earned stake
+    const currentEarnedStake = (
+      await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)
+    ).toBigInt();
 
-  //   const staker = await this.nftStake.connect(this.signers.user1).stakers(this.signers.user1.address);
+    // get current token balance of user
+    const balanceBeforeHarvest = (
+      await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())
+    ).toBigInt();
 
-  //   // get the staked receipt
-  //   const stakedAtTime = staker.lastCheckpoint.toNumber();
+    const staker = await this.nftStake.connect(this.signers.user1).stakers(this.signers.user1.address);
 
-  //   // get current blockNumer
-  //   let currentBlockTimestamp = await getLatestTimestamp(network.provider);
+    // get the staked receipt
+    const stakedAtTime = staker.lastCheckpoint.toNumber();
 
-  //   // check the staked receipt is 4 blocks ago
-  //   expect(currentBlockTimestamp - stakedAtTime).to.eq(4);
+    // get current blockNumer
+    let currentBlockTimestamp = await getLatestTimestamp(network.provider);
 
-  //   // should have no tokens
-  //   expect(balanceBeforeHarvest).to.eq(BigInt(0));
+    // check the staked receipt is 4 blocks ago
+    expect(currentBlockTimestamp - stakedAtTime).to.eq(4);
 
-  //   // should not let you harvest tokens you did not stake
-  //   await expect(this.nftStake.connect(this.signers.user2).harvest(this.signers.user1.address)).to.be.revertedWith(
-  //     "Only the staker can harvest",
-  //   );
+    // should have no tokens
+    expect(balanceBeforeHarvest).to.eq(BigInt(0));
 
-  //   // harvest Stake
-  //   await this.nftStake.connect(this.signers.user1).harvest(this.signers.user1.address);
+    // should not let you harvest tokens you did not stake
+    await expect(this.nftStake.connect(this.signers.user2).harvest(this.signers.user1.address)).to.be.revertedWith(
+      "Only the staker can harvest",
+    );
 
-  //   // should have harvested the tokens
-  //   expect(
-  //     (await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())).toBigInt(),
-  //   ).to.eq(currentEarnedStake);
+    // harvest Stake
+    await this.nftStake.connect(this.signers.user1).harvest(this.signers.user1.address);
 
-  //   // check the new receipt
-  //   const updatedStakeDate = (
-  //     await this.nftStake.connect(this.signers.user1).stakers(this.signers.user1.address)
-  //   ).lastCheckpoint.toBigInt();
+    // should have harvested the tokens
+    expect(
+      (await this.erc20Token.connect(this.signers.user1).balanceOf(await this.signers.user1.getAddress())).toBigInt(),
+    ).to.eq(currentEarnedStake);
 
-  //   // check the staked receipt has been updated to current blocktime
-  //   expect((await getLatestTimestamp(network.provider))).to.eq(updatedStakeDate);
+    // check the new receipt
+    const updatedStakeDate = (
+      await this.nftStake.connect(this.signers.user1).stakers(this.signers.user1.address)
+    ).lastCheckpoint.toBigInt();
 
-  //   // check that there is no pending payout availible
-  //   expect(
-  //     (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt(),
-  //   ).to.eq(0);
+    // check the staked receipt has been updated to current blocktime
+    expect((await getLatestTimestamp(network.provider))).to.eq(updatedStakeDate);
 
-  //   // check that nftStake still owns the token
-  //   expect(await this.nftToken.connect(this.signers.user1).ownerOf(tokenId)).to.eq(this.nftStake.address);
+    // check that there is no pending payout availible
+    expect(
+      (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt(),
+    ).to.eq(0);
 
-  //   // wait one block
-  //   await network.provider.send("evm_mine");
+    // check that nftStake still owns the token
+    expect(await this.nftToken.connect(this.signers.user1).ownerOf(tokenId)).to.eq(this.nftStake.address);
 
-  //   let pendingReward = (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt();
+    // wait one block
+    await network.provider.send("evm_mine");
 
-  //   // check that there is now a pending payout availible again
-  //   expect(pendingReward).to.be.above(0);
-  // });
+    let pendingReward = (await this.nftStake.connect(this.signers.user1).getPendingReward(this.signers.user1.address)).toBigInt();
+
+    // check that there is now a pending payout availible again
+    expect(pendingReward).to.be.above(0);
+  });
 }

@@ -1,5 +1,12 @@
 const fs = require("fs");
-import { boolean } from "hardhat/internal/core/params/argumentTypes";
+
+import { AbiCoder } from "@ethersproject/abi";
+
+import { MerkleTree } from "merkletreejs";
+import keccak256 from "keccak256";
+import { BigNumber, ethers, utils } from "ethers";
+import { soliditySha3, encodePacked } from "web3-utils";
+import { assert } from "console";
 
 enum God {
   Hermes = 0,
@@ -123,15 +130,15 @@ export function localComputeYield(stakedNFTs: Array<PieceInfo>, rewards: Rewards
       num_gods += 1;
     }
   }
-  
+
   // IFF more than 1 god staked, we should check for sets and combinations
   if (num_gods > 1) {
-      // If we have more than 1 god of a set, add the set reward
-      for (let i = 0; i < staked_sets.length; i++) {
-        if (staked_sets[i] > 0) {
-          localYield += rewards.single_rewards[SingleReward.SAME_SET] * staked_sets[i];
-        }
+    // If we have more than 1 god of a set, add the set reward
+    for (let i = 0; i < staked_sets.length; i++) {
+      if (staked_sets[i] > 0) {
+        localYield += rewards.single_rewards[SingleReward.SAME_SET] * staked_sets[i];
       }
+    }
 
     // Add the god + god combination reward
     for (let i = 0; i < couplings.length; i++) {
@@ -161,6 +168,58 @@ export function localComputeYield(stakedNFTs: Array<PieceInfo>, rewards: Rewards
     }
   }
 
-
   return BigInt(localYield * DECIMALS);
+}
+
+export async function generateMerkleTree(stakedNFTs: Array<PieceInfo>, contract: any, offset:number = 0) {
+  assert(stakedNFTs.length > 0, "No NFTs to generate Merkle tree from");
+
+  let result = { root: "", leaves: Array() };
+  // Create merkle tree proofs
+
+  const leaves = stakedNFTs.map(function (item, index) {
+    let packed = ethers.utils.solidityKeccak256(
+      ["uint32", "uint8", "uint8", "uint8", "uint8"],
+      [index + offset, item.Type, item.God, item.Attributes, item.Set],
+    );
+
+    // let packed = encodePacked(index, item.Type, item.God, item.Attributes, item.Set);
+    return packed;
+  });
+
+  const buf2hex = (x: any) => "0x" + x.toString("hex");
+
+
+  const tree = new MerkleTree(leaves, keccak256, { sort: true });
+
+  const index = 1;
+
+  const hexroot = tree.getHexRoot();
+  const leaf = leaves[index];
+  const hexproof = tree.getHexProof(leaf!);
+
+
+  // console.log("verifying with merkletreejs:");
+  // console.log(tree.verify(hexproof, leaf!, hexroot)); // true
+
+  // check that the tree validates locally
+  assert(tree.verify(hexproof, leaf!, hexroot));
+
+  // console.log("\n\nverifying with contract:"); // true
+  // let contract_res = await contract.verify(hexroot, index, stakedNFTs[index], hexproof);
+  // console.log(contract_res); // true
+
+  let computed_proofs = Array();
+
+  leaves.map(data => {
+    // const addr_hexproof = tree.getProof(data!).map((x:any) => buf2hex(x.data));
+    const addr_hexproof = tree.getHexProof(data!);
+
+    computed_proofs.push(addr_hexproof);
+  });
+
+  result["root"] = tree.getHexRoot();
+  result["leaves"] = computed_proofs;
+
+  return result;
 }

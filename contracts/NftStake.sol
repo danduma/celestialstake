@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import "hardhat/console.sol";
 
@@ -78,6 +79,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     // Admin / owner / controller address
     address public admin;
+    bytes32 private attributesRoot; // root of the Merkle tree that validates encoded NFT attributes 
 
     uint256 public constant DECIMALS = 10**18;
 
@@ -167,10 +169,12 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     constructor(
         IERC721 _nftToken,
         IERC20 _erc20Token,
+        bytes32 _attributesRoot,
         address _admin
     ) {
         nftToken = _nftToken;
         erc20Token = _erc20Token;
+        attributesRoot = _attributesRoot;
         admin = _admin;
         depositPaused = true;
     }
@@ -203,17 +207,18 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         }
     }
 
-    function stakeNFT(uint256[] calldata tokenIds, PieceInfo[] calldata tokenTraits) public nonReentrant {
+    function stakeNFT(uint256[] calldata tokenIds, PieceInfo[] calldata tokenTraits, bytes32[][] calldata proofs) public nonReentrant {
         require(!depositPaused, "Deposit paused");
 
-        if (tokenTraits.length > 0) {
-            // TODO add Merkle / signature check
+        require(tokenIds.length == tokenTraits.length, "Wrong arrays provided");
 
-            // require(_validateSignature(
-            //   signature,
-            //   tokenIds,
-            //   tokenTraits
-            // ), "Invalid data provided");
+        if (tokenTraits.length > 0) {
+
+            // TODO add Merkle / signature check
+            for (uint32 i=0; i < tokenIds.length; i++) {
+                require(_validateProof(i, tokenTraits[i], proofs[i]), 
+                "Invalid data provided");
+            }
 
             _setTokensValues(tokenIds, tokenTraits);
         }
@@ -542,6 +547,10 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         depositPaused = _pause;
     }
 
+    function setAttributesRoot(bytes32 _attributesRoot) public onlyAdmin {
+        attributesRoot = _attributesRoot;
+    }
+
     //// =============== UTILITY FUNCTIONS =================
 
     /**
@@ -574,4 +583,17 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         }
         return true;
     }
+
+    // Validate
+    function _validateProof(uint32 index, PieceInfo memory item,bytes32[] memory proof) public view returns (bool)
+    {
+        bytes memory packed = abi.encodePacked(index, item.Type, item.God, item.Attributes, item.Set);
+        bytes32 computedHash = keccak256(packed);
+
+        // console.logBytes(packed);
+        // console.log(" ");
+        // console.logBytes32(computedHash);
+
+        return MerkleProof.verify(proof, attributesRoot, computedHash);
+  }
 }
