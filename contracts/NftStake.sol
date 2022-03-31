@@ -216,7 +216,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
             // TODO add Merkle / signature check
             for (uint32 i=0; i < tokenIds.length; i++) {
-                require(_validateProof(i, tokenTraits[i], proofs[i]), 
+                require(_validateProof(tokenIds[i], tokenTraits[i], proofs[i]), 
                 "Invalid data provided");
             }
 
@@ -590,9 +590,10 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         bytes memory packed = abi.encodePacked(index, item.Type, item.God, item.Attributes, item.Set);
         bytes32 computedHash = keccak256(packed);
 
-        // console.logBytes(packed);
-        // console.log(" ");
-        // console.logBytes32(computedHash);
+        console.logBytes(" === validating proof ===");
+        console.logBytes(packed);
+        console.log(" ");
+        console.logBytes32(computedHash);
 
         return MerkleProof.verify(proof, attributesRoot, computedHash);
   }
