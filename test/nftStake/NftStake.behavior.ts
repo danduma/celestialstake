@@ -76,21 +76,17 @@ export function shouldBehaveLikeNftStake(testData: any): void {
     [testData.plain.Dionysus, testData.plain.Zeus], // Dionysus + 1
   ];
 
-//   testCases.forEach(pieces => {
-//     it("staking combinations should yield the expected reward: " + (counter + 1), async function () {
-//       // let pieces = [this.testData.plain.Artemis];
-//       await checkYieldMatches(this, pieces);
-//     });
+  let counter = 0;
+  
+  testCases.forEach(pieces => {
+    it("staking combinations should yield the expected reward: " + (counter + 1), async function () {
+      // let pieces = [this.testData.plain.Artemis];
+      await checkYieldMatches(this, pieces);
+    });
 
-//     counter += 1;
-//   });
+    counter += 1;
+  });
 
-  // it("should compute Merkle proofs", async function () {
-
-  //   let tree = await generateMerkleTree(testCases[5], this.nftStake);
-  //   console.log(tree.root);
-  //   console.log(tree.leaves);
-  // });
 
   it("should let user stake NFT", async function () {
     let nfts = [this.token_data[0]];
