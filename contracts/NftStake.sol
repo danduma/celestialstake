@@ -585,7 +585,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     // Validate
-    function _validateProof(uint32 index, PieceInfo memory item,bytes32[] memory proof) public view returns (bool)
+    function _validateProof(uint256 index, PieceInfo memory item,bytes32[] memory proof) public view returns (bool)
     {
         bytes memory packed = abi.encodePacked(index, item.Type, item.God, item.Attributes, item.Set);
         bytes32 computedHash = keccak256(packed);

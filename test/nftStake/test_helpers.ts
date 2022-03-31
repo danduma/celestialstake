@@ -178,26 +178,30 @@ export async function generateMerkleTree(stakedNFTs: Array<PieceInfo>, contract:
   // Create merkle tree proofs
 
   const leaves = stakedNFTs.map(function (item, index) {
-    let packed = ethers.utils.solidityKeccak256(
-      ["uint32", "uint8", "uint8", "uint8", "uint8"],
+    // let packed = ethers.utils.solidityKeccak256(
+    let packed = ethers.utils.solidityPack(
+      ["uint256", "uint8", "uint8", "uint8", "uint8"],
       [index + offset, item.Type, item.God, item.Attributes, item.Set],
     );
 
-    // let packed = encodePacked(index, item.Type, item.God, item.Attributes, item.Set);
-    return packed;
+    console.log("PACKED",packed);
+
+    let hashed = keccak256(packed);
+
+    return hashed;
   });
 
   const buf2hex = (x: any) => "0x" + x.toString("hex");
 
-
   const tree = new MerkleTree(leaves, keccak256, { sort: true });
 
-  const index = 1;
+  const index = 0;
 
   const hexroot = tree.getHexRoot();
   const leaf = leaves[index];
   const hexproof = tree.getHexProof(leaf!);
 
+  console.log("leaf", leaf);
 
   // console.log("verifying with merkletreejs:");
   // console.log(tree.verify(hexproof, leaf!, hexroot)); // true

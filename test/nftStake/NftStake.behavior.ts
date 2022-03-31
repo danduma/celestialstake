@@ -64,7 +64,7 @@ export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
 export async function setUpMerkleTree(nfts: Array<PieceInfo>, this1:any, offset:number=1): Promise<any> {
   let tree = await generateMerkleTree(nfts, this1.nftStake, 1);
     
-  await this1.nftStake.connect(this1.signers.user1).setAttributesRoot(tree.root);
+  await this1.nftStake.connect(this1.signers.admin).setAttributesRoot(tree.root);
   return tree;
 }
 
@@ -91,12 +91,12 @@ export function shouldBehaveLikeNftStake(testData: any): void {
 //     counter += 1;
 //   });
 
-it("should compute Merkle proofs", async function () {
+  // it("should compute Merkle proofs", async function () {
 
-  let tree = await generateMerkleTree(testCases[5], this.nftStake);
-  console.log(tree.root);
-  console.log(tree.leaves);
-});
+  //   let tree = await generateMerkleTree(testCases[5], this.nftStake);
+  //   console.log(tree.root);
+  //   console.log(tree.leaves);
+  // });
 
   it("should let user stake NFT", async function () {
     let nfts = [this.token_data[0]];
