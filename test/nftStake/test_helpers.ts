@@ -171,7 +171,7 @@ export function localComputeYield(stakedNFTs: Array<PieceInfo>, rewards: Rewards
   return BigInt(localYield * DECIMALS);
 }
 
-export async function generateMerkleTree(stakedNFTs: Array<PieceInfo>, contract: any, offset:number = 0) {
+export async function generateMerkleTree(stakedNFTs: Array<PieceInfo>, contract: any, offset:number = 0): Promise<any> {
   assert(stakedNFTs.length > 0, "No NFTs to generate Merkle tree from");
 
   let result = { root: "", leaves: Array() };

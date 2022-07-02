@@ -20,6 +20,8 @@ export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
 
   let piece_ids = [];
 
+  let tree = await setUpMerkleTree(pieces, this1);
+
   for (let i = 0; i < pieces.length; i++) {
     piece_ids[i] = BigNumber.from(i + 1);
 
@@ -28,7 +30,7 @@ export async function checkYieldMatches(this1: any, pieces: Array<PieceInfo>) {
   }
 
   // stake the required pieces
-  await expect(this1.nftStake.connect(this1.signers.user1).stakeNFT(piece_ids, pieces)).to.not.be.reverted;
+  await expect(this1.nftStake.connect(this1.signers.user1).stakeNFT(piece_ids, pieces, tree.leaves)).to.not.be.reverted;
 
   let initial_time = await getLatestTimestamp(network.provider);
 
@@ -77,7 +79,7 @@ export function shouldBehaveLikeNftStake(testData: any): void {
   ];
 
   let counter = 0;
-  
+
   testCases.forEach(pieces => {
     it("staking combinations should yield the expected reward: " + (counter + 1), async function () {
       // let pieces = [this.testData.plain.Artemis];
