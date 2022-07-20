@@ -180,7 +180,14 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * Always returns `IERC721Receiver.onERC721Received.selector`.
+     *  Allows updating the admin of the contract
+     */
+    function transferAdmin(address newadmin) public onlyAdmin {
+        admin = newadmin;
+    }
+
+    /**
+     *  Always returns `IERC721Receiver.onERC721Received.selector`.
      */
     function onERC721Received(
         address,
@@ -192,7 +199,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Updates the staker's current yield and the checkpoint time.
+     *  Updates the staker's current yield and the checkpoint time.
      */
     function accumulate(address staker) internal {
         stakers[staker].accumulatedAmount += getPendingReward(staker);
@@ -245,7 +252,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Moves around elements in a list so we can delete an element
+     *  Moves around elements in a list so we can delete an element
      */
     function _moveTokenInTheList(uint256[] memory list, uint256 tokenId) internal pure returns (uint256[] memory) {
         uint256 tokenIndex = 0;
@@ -271,7 +278,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev UNSTAKE NFTs from the staking contract.
+     *  UNSTAKE NFTs from the staking contract.
      */
     function unStakeNFT(uint256[] memory tokenIds) public nonReentrant {
         address _msgSender = msg.sender;
@@ -313,7 +320,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev External function to harvest the generated yield
+     *  External function to harvest the generated yield
      */
     function harvest(address staker) public nonReentrant requireTimeElapsed(staker) {
         require(msg.sender == staker, "Only the staker can harvest");
@@ -327,24 +334,22 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Withdraw leftover yield token in the contract to the admin's wallet
+     *  Withdraw leftover yield token in the contract to the admin's wallet
      */
     function reclaimYieldTokens() external onlyAdmin {
         erc20Token.transfer(admin, erc20Token.balanceOf(address(this)));
     }
 
     /**
-     * @dev Main function to compute a given staker's yield
+     *  Main function to compute a given staker's yield
      */
     function computeYield(address _staker) public view returns (uint256) {
-        // TODO - this is a placeholder for now
-
         uint256[12] memory staked_gods;
         uint256[30] memory staked_sets;
 
         uint256 yield = 0;
 
-        // First we list all unique gods and sets and
+        // First we collect all unique gods and sets and add the corresponding yield
         for (uint256 i; i < stakers[_staker].stakedNFTs.length; i++) {
             uint256 tokenId = stakers[_staker].stakedNFTs[i];
 
@@ -396,7 +401,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Splintered from computeYield() to get around code complexity issues
+     *  Splintered from computeYield() to get around code complexity issues
      */
     function computeCouplingsYield(uint256[12] memory staked_gods, address _staker, uint256 num_gods) public view returns (uint256) {
         uint256 yield = 0;
@@ -468,7 +473,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the outstanding reward for a given staker since lastCheckpoint.
+     *  Returns the outstanding reward for a given staker since lastCheckpoint.
      */
     function getPendingReward(address staker) public view returns (uint256) {
         Staker memory user = stakers[staker];
@@ -507,7 +512,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Function allows admin withdraw ERC721 in case of emergency.
+     *  Function allows admin withdraw ERC721 in case of emergency.
      */
     function emergencyWithdraw(uint256[] memory tokenIds) public onlyAdmin {
         require(tokenIds.length <= 50, "50 is max per tx");
@@ -523,7 +528,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Function to update the reward constants
+     *  Function to update the reward constants
      */
     function setRewards(
         uint256[12] memory _god_reward,
@@ -539,7 +544,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev Function allows to pause deposits if needed. Withdraw remains active.
+     *  Function allows to pause deposits if needed. Withdraw remains active.
      */
     function pauseDeposit(bool _pause) public onlyAdmin {
         depositPaused = _pause;
@@ -552,7 +557,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     //// =============== UTILITY FUNCTIONS =================
 
     /**
-     * @dev True if a given element is in the array
+     *  True if a given element is in the array
      */
     function elementInArray(uint256[] memory list, uint256 tokenId) internal pure returns (bool) {
         uint256 length = list.length;
@@ -567,7 +572,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     * @dev True if all elements in `gods_list` are greater than 0 in `staked_gods`
+     *  True if all elements in `gods_list` are greater than 0 in `staked_gods`
      */
     function godsListMatches(uint256[] memory gods_list, uint256[12] memory staked_gods) internal pure returns (bool) {
         if (gods_list.length == 0 || staked_gods.length == 0) {
