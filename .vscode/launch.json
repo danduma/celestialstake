@@ -4,7 +4,38 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
- 
+        {
+            "name": "Deploy staking contract",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/deploy_staking.js",
+            "runtimeArgs": [
+                "hardhat",
+                "run", 
+                "--network", 
+                "polygon_mumbai"
+            ],
+            "runtimeExecutable": "npx",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node"
+        },
+        {
+            "name": "Deploy coin contract",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/deploy_coin.js",
+            "runtimeArgs": [
+                "hardhat",
+                "run", 
+                "--network", 
+                "polygon_mumbai"
+            ],
+            "runtimeExecutable": "npx",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node"
+        },
         {
             "type": "node",
             "request": "launch",

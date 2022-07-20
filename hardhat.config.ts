@@ -36,6 +36,8 @@ if (!infuraApiKey) {
   throw new Error("Please set your INFURA_API_KEY in a .env file");
 }
 
+const { ALCHEMY_API_URL, PRIVATE_KEY } = process.env;
+
 function getChainConfig(network: keyof typeof chainIds): NetworkUserConfig {
   const url: string = "https://" + network + ".infura.io/v3/" + infuraApiKey;
   return {
@@ -72,6 +74,10 @@ const config: HardhatUserConfig = {
     kovan: getChainConfig("kovan"),
     rinkeby: getChainConfig("rinkeby"),
     ropsten: getChainConfig("ropsten"),
+    polygon_mumbai: {
+      url: ALCHEMY_API_URL,
+      accounts: [`0x${PRIVATE_KEY}`]
+   }
   },
   paths: {
     artifacts: "./artifacts",
