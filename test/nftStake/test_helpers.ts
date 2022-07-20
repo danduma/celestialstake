@@ -81,7 +81,7 @@ export function loadJSON(filename: string) {
 }
 
 /**
- * @dev True if all elements in `gods_list` are greater than 0 in `staked_gods`
+ *  True if all elements in `gods_list` are greater than 0 in `staked_gods`
  */
 export function godsListMatches(gods_list: Array<number>, staked_gods: Array<number>): boolean {
   if (gods_list.length == 0 || staked_gods.length == 0) {

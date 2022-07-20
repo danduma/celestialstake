@@ -4,7 +4,7 @@ import { Artifact } from "hardhat/types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 import { NftStake } from "../../typechain";
-import { MockERC20 } from "../../typechain";
+import { RELICS } from "../../typechain";
 import { MockERC721 } from "../../typechain";
 
 import { Signers } from "../types";
@@ -38,8 +38,8 @@ describe("Unit tests", function () {
   describe("NFTStake", function () {
     beforeEach(async function () {
       // deploy erc20
-      const erc20Artifact: Artifact = await hre.artifacts.readArtifact("MockERC20");
-      this.erc20Token = <MockERC20>(
+      const erc20Artifact: Artifact = await hre.artifacts.readArtifact("RELICS");
+      this.erc20Token = <RELICS>(
         await deployContract(this.signers.admin, erc20Artifact, [BigInt(10000000 * DECIMALS)])
       );
 
@@ -62,7 +62,7 @@ describe("Unit tests", function () {
       await this.nftStake.connect(this.signers.admin).pauseDeposit(false);
 
       // Send erc20 balance to NFTStake
-      const adminTokenInstance: MockERC20 = <MockERC20>await this.erc20Token.connect(this.signers.admin);
+      const adminTokenInstance: RELICS = <RELICS>await this.erc20Token.connect(this.signers.admin);
       await adminTokenInstance.transfer(
         this.nftStake.address,
         await adminTokenInstance.balanceOf(await this.signers.admin.getAddress()),
