@@ -2,6 +2,7 @@ import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import "@nomiclabs/hardhat-etherscan";
 
 import "./tasks/accounts";
 import "./tasks/clean";
@@ -36,7 +37,7 @@ if (!infuraApiKey) {
   throw new Error("Please set your INFURA_API_KEY in a .env file");
 }
 
-const { ALCHEMY_API_URL, PRIVATE_KEY } = process.env;
+const { ALCHEMY_API_URL, PRIVATE_KEY, POLYGONSCAN_API_KEY } = process.env;
 
 function getChainConfig(network: keyof typeof chainIds): NetworkUserConfig {
   const url: string = "https://" + network + ".infura.io/v3/" + infuraApiKey;
@@ -77,7 +78,10 @@ const config: HardhatUserConfig = {
     polygon_mumbai: {
       url: ALCHEMY_API_URL,
       accounts: [`0x${PRIVATE_KEY}`]
-   }
+    }
+  },
+  etherscan: {
+    apiKey: POLYGONSCAN_API_KEY
   },
   paths: {
     artifacts: "./artifacts",
@@ -86,7 +90,7 @@ const config: HardhatUserConfig = {
     tests: "./test",
   },
   solidity: {
-    version: "0.8.6",
+    version: "0.8.7",
     settings: {
       metadata: {
         // Not including the metadata hash

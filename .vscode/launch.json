@@ -60,6 +60,14 @@
             "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/hardhat",
             "args": ["test", "--network", "hardhat"],
             "cwd": "${workspaceFolder}/"
+          },
+          {
+            "type": "node",
+            "request": "launch",
+            "name": "Generate Merkle tree",
+            "program": "${workspaceFolder}/scripts/generate_merkle_tree.ts",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "outFiles": ["${workspaceFolder}/out/**/*.js"]
           }
     ]
 }

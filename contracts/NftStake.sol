@@ -29,7 +29,7 @@ import "hardhat/console.sol";
 contract NftStake is IERC721Receiver, ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant SECONDS_IN_DAY = 24 * 60 * 60;
+    uint256 private constant SECONDS_IN_DAY = 24 * 60 * 60;
     uint8 private constant NUM_COUPLING_REWARDS = 13;
 
     uint8 private constant AttributeCosmic = 1;
@@ -78,10 +78,10 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     bool public depositPaused;
 
     // Admin / owner / controller address
-    address public admin;
+    address private admin;
     bytes32 private attributesRoot; // root of the Merkle tree that validates encoded NFT attributes 
 
-    uint256 public constant DECIMALS = 10**18;
+    uint256 private constant DECIMALS = 10**18;
 
     // Hermes, Aphrodite, Zeus, Artemis, Poseidon, Hera, Hephaestus, Apollo,
     // Dionysus, Athena, Ares, Hades
