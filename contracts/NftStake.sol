@@ -341,7 +341,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     *  Main function to compute a given staker's yield
+     *  Main function to compute a given staker's daily yield
      */
     function computeYield(address _staker) public view returns (uint256) {
         uint256[12] memory staked_gods;
@@ -486,6 +486,10 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         return pendingReward;
     }
 
+    // function listStakedNFTs(address staker) public view returns (uint256[] memory) {
+    //     return stakers[staker].stakedNFTs;        
+    // }
+
     function _payoutStake(address staker) internal {
         /* NOTE : Must be called from non-reentrant function to be safe!*/
 
@@ -522,6 +526,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
             if (receiver != address(0) && nftToken.ownerOf(tokenIds[i]) == address(this)) {
                 nftToken.transferFrom(address(this), receiver, tokenIds[i]);
+                delete ownerOfToken[tokenIds[i]];
                 emit WithdrawStuckERC721(receiver, tokenIds[i]);
             }
         }

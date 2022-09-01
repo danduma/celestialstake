@@ -15,6 +15,7 @@ var test_helpers_js_1 = require("../test/nftStake/test_helpers.js");
 var rawdata = fs.readFileSync('attributes.json');
 var attributes = JSON.parse(rawdata);
 var keys = __spreadArray([], Object.keys(attributes), true);
+console.log(keys);
 var piece_list = [];
 keys.forEach(function (element) {
     var piece = attributes[element];
@@ -26,6 +27,6 @@ var tree = (0, test_helpers_js_1.generateMerkleTree)(piece_list, null);
 // console.log(tree);
 tree.then(function (result) {
     var data = JSON.stringify(result);
-    console.log(data);
+    // console.log(data);
     fs.writeFileSync('merkle_proofs.json', data);
 });
