@@ -16,13 +16,28 @@ var rawdata = fs.readFileSync('attributes.json');
 var attributes = JSON.parse(rawdata);
 var keys = __spreadArray([], Object.keys(attributes), true);
 console.log(keys);
-var piece_list = [];
+var piece_map = {};
 keys.forEach(function (element) {
     var piece = attributes[element];
     // console.log(piece);
-    piece_list.push(piece);
+    piece_map[element] = piece;
 });
 // console.log(piece_list);
+var piece_list = [];
+var placeholder_data = {
+    "God": 0,
+    "Type": 0,
+    "Attributes": 0,
+    "Set": 255
+};
+for (var counter = 0; counter < 4049; counter++) {
+    if (counter in piece_map) {
+        piece_list.push(piece_map[counter]);
+    }
+    else {
+        piece_list.push(placeholder_data);
+    }
+}
 var tree = (0, test_helpers_js_1.generateMerkleTree)(piece_list, null);
 // console.log(tree);
 tree.then(function (result) {
