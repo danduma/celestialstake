@@ -19,6 +19,11 @@ const { deployContract } = hre.waffle;
 const DECIMALS = 10 ** 18;
 
 let testData = JSON.parse(fs.readFileSync(__dirname + "/contract_test_data.json", "utf8"));
+let attributes_data = JSON.parse(fs.readFileSync(__dirname + "/../../attributes.json", "utf8"));
+let merkle_proof_data = JSON.parse(fs.readFileSync(__dirname + "/../../merkle_proofs.json", "utf8"));
+
+testData['attributes_data'] = attributes_data;
+testData['merkle_proof_data'] = merkle_proof_data;
 
 describe("Unit tests", function () {
   before(async function () {

@@ -559,6 +559,14 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         attributesRoot = _attributesRoot;
     }
 
+    function getNFTStakedCount(address staker) public view returns(uint256) { 
+        return stakers[staker].stakedNFTs.length; 
+    }
+
+    function getNFTStakedAtIndex(address staker, uint256 index) public view returns(uint256) { 
+        return stakers[staker].stakedNFTs[index]; 
+    }
+
     //// =============== UTILITY FUNCTIONS =================
 
     /**
