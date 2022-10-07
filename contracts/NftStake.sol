@@ -74,6 +74,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     IERC721 public nftToken;
     IERC20 public erc20Token;
+    uint256 public minStakingTime = 7 days;
 
     bool public depositPaused;
 
@@ -124,6 +125,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         uint256 currentYield; // how much is being generated per unit of time (day)
         uint256 accumulatedAmount; // how much was accumulated at lastCheckpoint time
         uint256 lastCheckpoint; // last time (in seconds) that payout was accumulated
+        uint256 stakingTime; // last time an NFT was staked
         uint256[] stakedNFTs; // list of NFTs staked by this staker
     }
 
@@ -244,6 +246,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
         }
 
+        user.stakingTime = block.timestamp;
+
         accumulate(_msgSender);
         user.currentYield = computeYield(_msgSender);
         stakers[_msgSender] = user;
@@ -296,6 +300,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
             require(elementInArray(user.stakedNFTs, tokenIds[i]), "NFT not staked by the caller");
 
             require(nftToken.ownerOf(tokenIds[i]) == address(this), "Not in staking contract");
+
+            require(user.stakingTime + minStakingTime > block.timestamp, "NFT still locked up in staking");
 
             delete ownerOfToken[tokenIds[i]];
 
@@ -559,12 +565,12 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         attributesRoot = _attributesRoot;
     }
 
-    function getNFTStakedCount(address staker) public view returns(uint256) { 
-        return stakers[staker].stakedNFTs.length; 
+    function setMinStakingTime(uint256 time) public onlyAdmin {
+        minStakingTime = time;
     }
 
-    function getNFTStakedAtIndex(address staker, uint256 index) public view returns(uint256) { 
-        return stakers[staker].stakedNFTs[index]; 
+    function getNFTStaked(address staker) public view returns(uint256[] memory) { 
+        return stakers[staker].stakedNFTs; 
     }
 
     //// =============== UTILITY FUNCTIONS =================
