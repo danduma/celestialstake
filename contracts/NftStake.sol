@@ -26,11 +26,15 @@ import "hardhat/console.sol";
 //     Pantheon
 // }
 
+
+
 contract NftStake is IERC721Receiver, ReentrancyGuard {
     using SafeMath for uint256;
 
-    uint256 public constant SECONDS_IN_DAY = 24 * 60 * 60;
+    uint256 private constant SECONDS_IN_DAY = 24 * 60 * 60;
     uint8 private constant NUM_COUPLING_REWARDS = 13;
+    
+    uint256 private constant MAX_INT = 10000000;
 
     uint8 private constant AttributeCosmic = 1;
     uint8 private constant AttributeGlow = 2;
@@ -74,14 +78,15 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
     IERC721 public nftToken;
     IERC20 public erc20Token;
+    uint256 public minStakingTime = 7 days;
 
     bool public depositPaused;
 
     // Admin / owner / controller address
-    address public admin;
+    address private admin;
     bytes32 private attributesRoot; // root of the Merkle tree that validates encoded NFT attributes 
 
-    uint256 public constant DECIMALS = 10**18;
+    uint256 private constant DECIMALS = 10**18;
 
     // Hermes, Aphrodite, Zeus, Artemis, Poseidon, Hera, Hephaestus, Apollo,
     // Dionysus, Athena, Ares, Hades
@@ -124,6 +129,8 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         uint256 currentYield; // how much is being generated per unit of time (day)
         uint256 accumulatedAmount; // how much was accumulated at lastCheckpoint time
         uint256 lastCheckpoint; // last time (in seconds) that payout was accumulated
+        // mapping(uint256 => uint256) stakingTime; // last staking time, per NFT
+        uint256[] stakingTime; // last staking time, per NFT
         uint256[] stakedNFTs; // list of NFTs staked by this staker
     }
 
@@ -220,8 +227,6 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         require(tokenIds.length == tokenTraits.length, "Wrong arrays provided");
 
         if (tokenTraits.length > 0) {
-
-            // TODO add Merkle / signature check
             for (uint32 i=0; i < tokenIds.length; i++) {
                 require(_validateProof(tokenIds[i], tokenTraits[i], proofs[i]), 
                 "Invalid data provided");
@@ -241,7 +246,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
             ownerOfToken[tokenIds[i]] = _msgSender;
             user.stakedNFTs.push(tokenIds[i]);
-
+            user.stakingTime.push(block.timestamp);
         }
 
         accumulate(_msgSender);
@@ -297,10 +302,17 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
             require(nftToken.ownerOf(tokenIds[i]) == address(this), "Not in staking contract");
 
+            uint256 index = indexInArray(user.stakedNFTs,tokenIds[i]);
+
+            require(user.stakingTime[index] + minStakingTime <= block.timestamp, "NFT still locked up in staking");
+
             delete ownerOfToken[tokenIds[i]];
 
+            user.stakingTime[index] = tokenIds[i];
             user.stakedNFTs = _moveTokenInTheList(user.stakedNFTs, tokenIds[i]);
             user.stakedNFTs.pop();
+            user.stakingTime = _moveTokenInTheList(user.stakingTime, tokenIds[i]);
+            user.stakingTime.pop();
 
             if (user.currentYield != 0) {
                 newYield = computeYield(_msgSender);
@@ -341,7 +353,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
     }
 
     /**
-     *  Main function to compute a given staker's yield
+     *  Main function to compute a given staker's daily yield
      */
     function computeYield(address _staker) public view returns (uint256) {
         uint256[12] memory staked_gods;
@@ -486,6 +498,10 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         return pendingReward;
     }
 
+    // function listStakedNFTs(address staker) public view returns (uint256[] memory) {
+    //     return stakers[staker].stakedNFTs;        
+    // }
+
     function _payoutStake(address staker) internal {
         /* NOTE : Must be called from non-reentrant function to be safe!*/
 
@@ -522,6 +538,7 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
 
             if (receiver != address(0) && nftToken.ownerOf(tokenIds[i]) == address(this)) {
                 nftToken.transferFrom(address(this), receiver, tokenIds[i]);
+                delete ownerOfToken[tokenIds[i]];
                 emit WithdrawStuckERC721(receiver, tokenIds[i]);
             }
         }
@@ -554,22 +571,40 @@ contract NftStake is IERC721Receiver, ReentrancyGuard {
         attributesRoot = _attributesRoot;
     }
 
+    function setMinStakingTime(uint256 time) public onlyAdmin {
+        minStakingTime = time;
+    }
+
+    function getNFTStaked(address staker) public view returns(uint256[] memory) { 
+        return stakers[staker].stakedNFTs; 
+    }
+
     //// =============== UTILITY FUNCTIONS =================
 
     /**
      *  True if a given element is in the array
      */
     function elementInArray(uint256[] memory list, uint256 tokenId) internal pure returns (bool) {
+        // if (indexInArray(list, tokenId) == -1) 
+        //     { return false; }
+        // else
+        //     { return true; };
+        return (indexInArray(list, tokenId) != MAX_INT);
+    }
+    
+    function indexInArray(uint256[] memory list, uint256 tokenId) internal pure returns (uint256) {
         uint256 length = list.length;
 
         for (uint256 i = 0; i < length; i++) {
             if (list[i] == tokenId) {
-                return true;
+                return i;
             }
         }
 
-        return false;
+        return MAX_INT;
     }
+    
+    
 
     /**
      *  True if all elements in `gods_list` are greater than 0 in `staked_gods`
